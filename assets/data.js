@@ -285,7 +285,7 @@ window.ARENAS_MENU = {
           desc: "Bien fría. Lata, botella o tobo de 10 para compartir.",
           options: [
             { label: "Lata", price: 2 },
-            { label: "Botella", price: 4 },
+            { label: "Botella", price: 1 },
             { label: "Tobo 10 cervezas", price: 10 }
           ]
         },
