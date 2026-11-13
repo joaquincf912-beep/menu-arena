@@ -255,6 +255,56 @@
       });
   }
 
+  function renderAccount() {
+    var box = document.createElement("section");
+    box.className = "panel";
+    box.innerHTML =
+      "<h2>Cuenta<small>" + (session && session.email ? session.email : "") + "</small></h2>" +
+      '<div class="account">' +
+        '<label class="field"><span>Nueva contraseña</span>' +
+          '<input type="password" id="new-pass" autocomplete="new-password" minlength="8" placeholder="Mínimo 8 caracteres"></label>' +
+        '<button class="btn btn--primary" id="change-pass" type="button">Cambiar contraseña</button>' +
+      "</div>";
+
+    var input = box.querySelector("#new-pass");
+    var button = box.querySelector("#change-pass");
+
+    button.addEventListener("click", function () {
+      var value = input.value;
+      if (value.length < 8) {
+        setStatus("La contraseña debe tener al menos 8 caracteres.", "error");
+        return;
+      }
+      button.disabled = true;
+      setStatus("Guardando contraseña…");
+      withAuth()
+        .then(function (current) {
+          return fetch(base + "/auth/v1/user", {
+            method: "PUT",
+            headers: {
+              apikey: anon,
+              Authorization: "Bearer " + current.access_token,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ password: value })
+          });
+        })
+        .then(function (res) {
+          if (!res.ok) throw new Error("No se pudo cambiar (" + res.status + ").");
+          input.value = "";
+          setStatus("Contraseña actualizada.", "ok");
+        })
+        .catch(function (error) {
+          setStatus(error.message, "error");
+        })
+        .then(function () {
+          button.disabled = false;
+        });
+    });
+
+    app.appendChild(box);
+  }
+
   function paint(overrides) {
     app.innerHTML = "";
 
@@ -272,6 +322,8 @@
 
       app.appendChild(panel);
     });
+
+    renderAccount();
   }
 
   function collect() {
