@@ -16,13 +16,14 @@ create policy "precios lectura publica"
   on public.menu_prices for select
   using (true);
 
--- Solo un usuario autenticado (el dueño) puede crear o cambiar precios.
+-- Solo la cuenta del dueño puede crear o cambiar precios.
+-- Sustituir el uid por el id real del usuario en Authentication > Users.
 drop policy if exists "precios escritura dueno" on public.menu_prices;
 create policy "precios escritura dueno"
   on public.menu_prices for all
   to authenticated
-  using (true)
-  with check (true);
+  using (auth.uid() = 'db844fb6-7732-4759-8cd6-1a7fa075bd79'::uuid)
+  with check (auth.uid() = 'db844fb6-7732-4759-8cd6-1a7fa075bd79'::uuid);
 
 grant select on public.menu_prices to anon, authenticated;
 grant insert, update, delete on public.menu_prices to authenticated;
