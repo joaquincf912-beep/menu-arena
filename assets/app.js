@@ -13,6 +13,26 @@
     return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");
   };
 
+  var pricing = window.ArenasPricing;
+  var cardByKey = {};
+
+  var topPriceFor = function (item) {
+    return item.options && item.options.length
+      ? "desde " + money(item.options[0].price !== null ? item.options[0].price : item.price)
+      : (item.price === null ? "Consultar" : money(item.price));
+  };
+
+  var paintPrices = function (card, item) {
+    var priceNode = card.querySelector('[data-role="price"]');
+    if (priceNode) priceNode.textContent = topPriceFor(item);
+    if (item.options) {
+      item.options.forEach(function (option) {
+        var node = card.querySelector('[data-opt="' + option.label + '"]');
+        if (node) node.textContent = option.price === null ? "Consultar" : money(option.price);
+      });
+    }
+  };
+
   var el = function (tag, className, html) {
     var node = document.createElement(tag);
     if (className) node.className = className;
@@ -47,9 +67,12 @@
       card.setAttribute("data-name", (item.name + " " + (item.sizeLabel || "") + " " + item.desc).toLowerCase());
       if (item.sizeLabel) card.setAttribute("data-size", item.sizeLabel.toLowerCase());
 
-      var topPrice = item.options && item.options.length
-        ? "desde " + money(item.options[0].price !== null ? item.options[0].price : item.price)
-        : (item.price === null ? "Consultar" : money(item.price));
+      var topPrice = topPriceFor(item);
+      var cardKey = pricing ? pricing.key(section.id, item) : "";
+      if (cardKey) {
+        card.setAttribute("data-key", cardKey);
+        cardByKey[cardKey] = { card: card, item: item };
+      }
 
       var alt = item.name + (item.sizeLabel ? " (" + item.sizeLabel + ")" : "") + " — Arenas Grill Bar";
       var base = "assets/img/dishes/" + item.img;
@@ -68,7 +91,7 @@
           '<div class="dish__head">' +
             '<h3 class="dish__name">' + item.name +
               (item.sizeLabel ? ' <em>' + item.sizeLabel + "</em>" : "") + "</h3>" +
-            '<span class="dish__price">' + topPrice + "</span>" +
+            '<span class="dish__price" data-role="price">' + topPrice + "</span>" +
           "</div>" +
           '<p class="dish__desc">' + item.desc + "</p>" +
           (item.options && item.options.length ? optionsMarkup(item.options) : "") +
@@ -106,9 +129,43 @@
   function optionsMarkup(options) {
     return '<ul class="dish__options">' + options.map(function (o) {
       return '<li><span class="dish__opt-label">' + o.label + "</span><i></i>" +
-        '<span class="dish__opt-price">' + (o.price === null ? "Consultar" : money(o.price)) + "</span></li>";
+        '<span class="dish__opt-price" data-opt="' + o.label + '">' + (o.price === null ? "Consultar" : money(o.price)) + "</span></li>";
     }).join("") + "</ul>";
   }
+
+  /* ---------- precios en vivo (Supabase) ---------- */
+
+  (function syncPrices() {
+    var config = window.ARENAS_CONFIG || {};
+    if (!pricing || !config.supabaseUrl || !config.supabaseAnonKey) return;
+
+    var endpoint = String(config.supabaseUrl).replace(/\/$/, "") +
+      "/rest/v1/menu_prices?select=key,price,options";
+
+    fetch(endpoint, {
+      headers: { apikey: config.supabaseAnonKey, Authorization: "Bearer " + config.supabaseAnonKey }
+    })
+      .then(function (res) { return res.ok ? res.json() : []; })
+      .then(function (rows) {
+        (rows || []).forEach(function (row) {
+          var entry = cardByKey[row.key];
+          if (!entry) return;
+          if (row.price !== null && row.price !== undefined) entry.item.price = Number(row.price);
+          if (Array.isArray(row.options) && row.options.length) {
+            entry.item.options = row.options.map(function (option) {
+              return {
+                label: option.label,
+                price: option.price === null || option.price === undefined ? null : Number(option.price)
+              };
+            });
+          }
+          paintPrices(entry.card, entry.item);
+        });
+      })
+      .catch(function () {
+        /* sin conexión o sin configurar: se mantienen los precios locales */
+      });
+  })();
 
   /* ---------- navegación activa ---------- */
 
