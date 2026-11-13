@@ -142,9 +142,7 @@
     var endpoint = String(config.supabaseUrl).replace(/\/$/, "") +
       "/rest/v1/menu_prices?select=key,price,options";
 
-    fetch(endpoint, {
-      headers: { apikey: config.supabaseAnonKey, Authorization: "Bearer " + config.supabaseAnonKey }
-    })
+    fetch(endpoint, { headers: { apikey: config.supabaseAnonKey } })
       .then(function (res) { return res.ok ? res.json() : []; })
       .then(function (rows) {
         (rows || []).forEach(function (row) {
