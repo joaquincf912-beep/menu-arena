@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Arenas Grill Bar">
+  <circle cx="50" cy="50" r="49" fill="#7a1218"/>
+  <circle cx="50" cy="50" r="44" fill="none" stroke="#e8d3a9" stroke-width="0.9" opacity="0.9"/>
+  <circle cx="50" cy="50" r="39.6" fill="none" stroke="#e8d3a9" stroke-width="0.5" opacity="0.5" stroke-dasharray="1.2 2.8"/>
+  <g fill="none" stroke="#e8d3a9" stroke-width="0.9" opacity="0.75" stroke-linecap="round">
+    <path d="M25.5 61.5c-3.6-7.4-3.1-14.6 2-20.4"/>
+    <path d="M74.5 61.5c3.6-7.4 3.1-14.6-2-20.4"/>
+  </g>
+  <g fill="#e8d3a9" opacity="0.7">
+    <ellipse cx="24.4" cy="54.6" rx="2.5" ry="1" transform="rotate(-35 24.4 54.6)"/>
+    <ellipse cx="24.1" cy="49.4" rx="2.5" ry="1" transform="rotate(-25 24.1 49.4)"/>
+    <ellipse cx="25.2" cy="44.4" rx="2.4" ry="1" transform="rotate(-12 25.2 44.4)"/>
+    <ellipse cx="75.6" cy="54.6" rx="2.5" ry="1" transform="rotate(35 75.6 54.6)"/>
+    <ellipse cx="75.9" cy="49.4" rx="2.5" ry="1" transform="rotate(25 75.9 49.4)"/>
+    <ellipse cx="74.8" cy="44.4" rx="2.4" ry="1" transform="rotate(12 74.8 44.4)"/>
+  </g>
+  <g fill="none" stroke="#f5e8cc" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M39 39v8.4M43 39v8.4M47 39v8.4"/>
+    <path d="M39 47.4c0 3.2 8 3.2 8 0"/>
+    <path d="M43 50.6V63"/>
+    <path d="M57 37.2c4.6 4.2 5.6 8.6 0.4 11.6"/>
+    <path d="M57 48.8V63"/>
+  </g>
+</svg>

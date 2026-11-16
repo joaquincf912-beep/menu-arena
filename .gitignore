@@ -1,6 +1,4 @@
 .DS_Store
-.freebuff/
-threads/
-vista-*.jpg
-m-*.jpg
-cuentasclaras/
+*.log
+.env
+.env.*
