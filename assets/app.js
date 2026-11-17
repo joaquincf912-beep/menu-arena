@@ -9,12 +9,24 @@
     return menu.currency + value.toFixed(hasCents ? 2 : 0);
   };
 
-  var slug = function (text) {
-    return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");
-  };
-
   var pricing = window.ArenasPricing;
   var cardByKey = {};
+  var itemByKey = {};
+
+  var esc = function (text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  };
+
+  var norm = function (text) {
+    return String(text == null ? "" : text)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  };
 
   var topPriceFor = function (item) {
     return item.options && item.options.length
@@ -33,105 +45,109 @@
     }
   };
 
-  var el = function (tag, className, html) {
-    var node = document.createElement(tag);
-    if (className) node.className = className;
-    if (html !== undefined) node.innerHTML = html;
-    return node;
-  };
+  function optionsMarkup(options) {
+    return '<ul class="dish__options">' + options.map(function (o) {
+      return '<li><span class="dish__opt-label">' + esc(o.label) + "</span><i></i>" +
+        '<span class="dish__opt-price" data-opt="' + esc(o.label) + '">' + (o.price === null ? "Consultar" : money(o.price)) + "</span></li>";
+    }).join("") + "</ul>";
+  }
 
-  /* ---------- render ---------- */
+  var ornament =
+    '<div class="section__ornament" aria-hidden="true"><span></span>' +
+    '<svg viewBox="0 0 40 24"><path d="M20 22V9M20 9c0-4-3-7-7-7 0 4 3 7 7 7Zm0 0c0-4 3-7 7-7 0 4-3 7-7 7ZM20 16c-3 0-6-2-6-5 3 0 6 2 6 5Zm0 0c3 0 6-2 6-5-3 0-6 2-6 5Z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>' +
+    "<span></span></div>";
+
+  /* ---------- render (una sola pasada) ---------- */
 
   var main = document.getElementById("menu");
   var chips = document.getElementById("chips");
   var eagerCount = 0;
+  var blocks = [];
+  var chipLinks = [];
 
   menu.sections.forEach(function (section) {
-    var block = el("section", "section");
-    block.id = section.id;
-    block.setAttribute("data-section", section.id);
-
-    var head = el("header", "section__head");
-    head.innerHTML =
-      '<p class="section__kicker">' + section.items.length + " platos</p>" +
-      "<h2>" + section.title + "</h2>" +
-      '<p class="section__blurb">' + section.blurb + "</p>" +
-      '<div class="section__ornament" aria-hidden="true"><span></span>' +
-      '<svg viewBox="0 0 40 24"><path d="M20 22V9M20 9c0-4-3-7-7-7 0 4 3 7 7 7Zm0 0c0-4 3-7 7-7 0 4-3 7-7 7ZM20 16c-3 0-6-2-6-5 3 0 6 2 6 5Zm0 0c3 0 6-2 6-5-3 0-6 2-6 5Z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>' +
-      "<span></span></div>";
-    block.appendChild(head);
-
-    var grid = el("div", "grid");
-    section.items.forEach(function (item) {
-      var card = el("article", "dish");
-      card.setAttribute("data-name", (item.name + " " + (item.sizeLabel || "") + " " + item.desc).toLowerCase());
-      if (item.sizeLabel) card.setAttribute("data-size", item.sizeLabel.toLowerCase());
-
-      var topPrice = topPriceFor(item);
+    var cards = section.items.map(function (item) {
       var cardKey = pricing ? pricing.key(section.id, item) : "";
-      if (cardKey) {
-        card.setAttribute("data-key", cardKey);
-        cardByKey[cardKey] = { card: card, item: item };
-      }
+      if (cardKey) itemByKey[cardKey] = item;
 
-      var alt = item.name + (item.sizeLabel ? " (" + item.sizeLabel + ")" : "") + " — Arenas Grill Bar";
       var base = "assets/img/dishes/" + item.img;
-      var priority = eagerCount < 3 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
-      eagerCount++;
-      card.innerHTML =
-        '<div class="dish__media">' +
-          "<picture>" +
+      var priority = eagerCount < 3
+        ? ' loading="eager" fetchpriority="high"'
+        : ' loading="lazy" fetchpriority="low"';
+      eagerCount += 1;
+
+      var haystack = norm(item.name + " " + (item.sizeLabel || "") + " " + (item.desc || ""));
+      var alt = item.name + (item.sizeLabel ? " (" + item.sizeLabel + ")" : "") + " — Arenas Grill Bar";
+
+      return (
+        '<article class="dish"' +
+          (cardKey ? ' data-key="' + esc(cardKey) + '"' : "") +
+          ' data-search="' + esc(haystack) + '">' +
+          '<div class="dish__media"><picture>' +
             '<source type="image/webp" srcset="' + base + '-200.webp 200w, ' + base + '-400.webp 400w, ' + base + '-900.webp 900w"' +
               ' sizes="(max-width: 720px) 104px, (max-width: 1024px) 45vw, 380px">' +
-            '<img src="' + base + '-600.jpg" alt="' + alt.replace(/"/g, "&quot;") + '" ' + priority + ' decoding="async" width="1200" height="900">' +
+            '<img src="' + base + '-600.jpg" alt="' + esc(alt) + '"' + priority + ' decoding="async" width="1200" height="900">' +
           "</picture>" +
-          (item.tag ? '<span class="dish__tag">' + item.tag + "</span>" : "") +
-        "</div>" +
-        '<div class="dish__body">' +
-          '<div class="dish__head">' +
-            '<h3 class="dish__name">' + item.name +
-              (item.sizeLabel ? ' <em>' + item.sizeLabel + "</em>" : "") + "</h3>" +
-            '<span class="dish__price" data-role="price">' + topPrice + "</span>" +
+          (item.tag ? '<span class="dish__tag">' + esc(item.tag) + "</span>" : "") +
           "</div>" +
-          '<p class="dish__desc">' + item.desc + "</p>" +
-          (item.options && item.options.length ? optionsMarkup(item.options) : "") +
-          (item.variants && item.variants.length
-            ? '<ul class="dish__variants">' + item.variants.map(function (v) {
-                return "<li>" + v + "</li>";
-              }).join("") + "</ul>"
-            : "") +
-        "</div>";
-      grid.appendChild(card);
-    });
+          '<div class="dish__body">' +
+            '<div class="dish__head">' +
+              '<h3 class="dish__name">' + esc(item.name) +
+                (item.sizeLabel ? " <em>" + esc(item.sizeLabel) + "</em>" : "") +
+              "</h3>" +
+              '<span class="dish__price" data-role="price">' + topPriceFor(item) + "</span>" +
+            "</div>" +
+            '<p class="dish__desc">' + esc(item.desc) + "</p>" +
+            (item.options && item.options.length ? optionsMarkup(item.options) : "") +
+            (item.variants && item.variants.length
+              ? '<ul class="dish__variants">' + item.variants.map(function (v) {
+                  return "<li>" + esc(v) + "</li>";
+                }).join("") + "</ul>"
+              : "") +
+          "</div>" +
+        "</article>"
+      );
+    }).join("");
 
-    block.appendChild(grid);
-    main.appendChild(block);
+    blocks.push(
+      '<section class="section" id="' + esc(section.id) + '" data-section="' + esc(section.id) + '">' +
+        '<header class="section__head">' +
+          '<p class="section__kicker">' + section.items.length + " platos</p>" +
+          "<h2>" + esc(section.title) + "</h2>" +
+          '<p class="section__blurb">' + esc(section.blurb) + "</p>" +
+          ornament +
+        "</header>" +
+        '<div class="grid">' + cards + "</div>" +
+      "</section>"
+    );
 
-    var chip = el("a", "chip", section.title);
-    chip.href = "#" + section.id;
-    chip.setAttribute("data-target", section.id);
-    chips.appendChild(chip);
+    chipLinks.push(
+      '<a class="chip" href="#' + esc(section.id) + '" data-target="' + esc(section.id) + '">' +
+        esc(section.title) +
+      "</a>"
+    );
   });
 
-  /* índice rápido: mapa del menú completo para móvil */
-  var qindex = el("nav", "qindex");
-  qindex.setAttribute("aria-label", "Índice del menú");
-  qindex.innerHTML = menu.sections.map(function (section) {
-    var first = section.items[0];
-    var base = "assets/img/dishes/" + first.img;
-    return '<a class="qindex__item" href="#' + section.id + '">' +
-      '<img src="' + base + '-200.webp" alt="" width="200" height="150" loading="lazy" decoding="async">' +
-      '<span class="qindex__text"><b>' + section.title + '</b><i>' + section.items.length + " platos</i></span>" +
-      "</a>";
-  }).join("");
-  main.parentNode.insertBefore(qindex, main);
+  main.innerHTML = blocks.join("");
+  chips.innerHTML = chipLinks.join("");
 
-  function optionsMarkup(options) {
-    return '<ul class="dish__options">' + options.map(function (o) {
-      return '<li><span class="dish__opt-label">' + o.label + "</span><i></i>" +
-        '<span class="dish__opt-price" data-opt="' + o.label + '">' + (o.price === null ? "Consultar" : money(o.price)) + "</span></li>";
-    }).join("") + "</ul>";
+  /* mapa clave → tarjeta, en una sola lectura del DOM */
+  var tagged = main.querySelectorAll("[data-key]");
+  for (var i = 0; i < tagged.length; i++) {
+    cardByKey[tagged[i].getAttribute("data-key")] = tagged[i];
   }
+
+  /* índice rápido: mapa del menú completo para móvil */
+  main.insertAdjacentHTML(
+    "beforebegin",
+    '<nav class="qindex" aria-label="Índice del menú">' +
+      menu.sections.map(function (section) {
+        return '<a class="qindex__item" href="#' + esc(section.id) + '">' +
+          '<img src="assets/img/dishes/' + esc(section.items[0].img) + '-200.webp" alt="" width="200" height="150" loading="lazy" decoding="async">' +
+          '<span class="qindex__text"><b>' + esc(section.title) + "</b><i>" + section.items.length + " platos</i></span></a>";
+      }).join("") +
+    "</nav>"
+  );
 
   /* ---------- precios en vivo (Supabase) ---------- */
 
@@ -146,18 +162,19 @@
       .then(function (res) { return res.ok ? res.json() : []; })
       .then(function (rows) {
         (rows || []).forEach(function (row) {
-          var entry = cardByKey[row.key];
-          if (!entry) return;
-          if (row.price !== null && row.price !== undefined) entry.item.price = Number(row.price);
+          var item = itemByKey[row.key];
+          var card = cardByKey[row.key];
+          if (!item || !card) return;
+          if (row.price !== null && row.price !== undefined) item.price = Number(row.price);
           if (Array.isArray(row.options) && row.options.length) {
-            entry.item.options = row.options.map(function (option) {
+            item.options = row.options.map(function (option) {
               return {
                 label: option.label,
                 price: option.price === null || option.price === undefined ? null : Number(option.price)
               };
             });
           }
-          paintPrices(entry.card, entry.item);
+          paintPrices(card, item);
         });
       })
       .catch(function () {
@@ -199,21 +216,20 @@
         }
       });
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
-    Array.prototype.forEach.call(document.querySelectorAll(".dish"), function (dish) {
-      revealObserver.observe(dish);
-    });
+    var dishes = main.querySelectorAll(".dish");
+    for (var d = 0; d < dishes.length; d++) revealObserver.observe(dishes[d]);
   } else {
-    Array.prototype.forEach.call(document.querySelectorAll(".dish"), function (dish) {
+    Array.prototype.forEach.call(main.querySelectorAll(".dish"), function (dish) {
       dish.classList.add("is-in");
     });
   }
 
   /* seguro: si algo no se revela (scroll muy rápido en móvil), se muestra igual */
   setTimeout(function () {
-    Array.prototype.forEach.call(document.querySelectorAll(".dish:not(.is-in)"), function (dish) {
+    Array.prototype.forEach.call(main.querySelectorAll(".dish:not(.is-in)"), function (dish) {
       dish.classList.add("is-in");
     });
-  }, 2500);
+  }, 1800);
 
   chips.addEventListener("click", function (event) {
     var chip = event.target.closest(".chip");
@@ -230,26 +246,25 @@
 
   search.addEventListener("input", function () {
     clearTimeout(timer);
-    timer = setTimeout(applyFilter, 120);
+    timer = setTimeout(applyFilter, 110);
   });
 
   function applyFilter() {
-    var term = search.value.trim().toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    var term = norm(search.value.trim());
     var anyVisible = false;
 
     sections.forEach(function (section) {
       var visibleHere = 0;
-      Array.prototype.forEach.call(section.querySelectorAll(".dish"), function (dish) {
-        var haystack = dish.getAttribute("data-name")
-          .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        var match = !term || haystack.indexOf(term) !== -1;
+      var dishes = section.querySelectorAll(".dish");
+      for (var i = 0; i < dishes.length; i++) {
+        var dish = dishes[i];
+        var match = !term || dish.getAttribute("data-search").indexOf(term) !== -1;
         dish.classList.toggle("is-hidden", !match);
         if (match) {
-          visibleHere++;
-          dish.classList.add("is-in");
+          visibleHere += 1;
+          if (!dish.classList.contains("is-in")) dish.classList.add("is-in");
         }
-      });
+      }
       section.classList.toggle("is-hidden", visibleHere === 0);
       if (visibleHere) anyVisible = true;
     });
@@ -262,8 +277,19 @@
   document.getElementById("year").textContent = new Date().getFullYear();
 
   var toolbar = document.getElementById("toolbar");
+  var stuck = false;
+  var ticking = false;
   var onScroll = function () {
-    toolbar.classList.toggle("is-stuck", window.scrollY > 40);
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      var next = window.scrollY > 40;
+      if (next !== stuck) {
+        stuck = next;
+        toolbar.classList.toggle("is-stuck", next);
+      }
+      ticking = false;
+    });
   };
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
