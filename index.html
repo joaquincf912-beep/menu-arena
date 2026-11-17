@@ -2,12 +2,12 @@
 <html lang="es">
 <head>
 <script>
-/* Servido como traccionweb.com/menu-arena: las rutas relativas cuelgan de ese prefijo. */
+/* Servido como traccionweb.com/menu-arena: las rutas relativas cuelgan de ese
+   prefijo. La base se escribe mientras se parsea el documento, antes de que el
+   navegador resuelva el CSS, las fuentes y las imágenes. */
 (function () {
   if (location.pathname.indexOf("/menu-arena") === 0) {
-    var base = document.createElement("base");
-    base.href = "/menu-arena/";
-    document.head.appendChild(base);
+    document.write('<base href="/menu-arena/">');
   }
 })();
 </script>
