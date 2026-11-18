@@ -264,80 +264,19 @@
         });
     }
 
-    /* --- canal en tiempo real: cualquier cambio dispara una relectura --- */
-    var socket = null;
-    var beat = null;
-    var attempt = 0;
-    var ref = 0;
-
-    function connect() {
-      if (!("WebSocket" in window) || !navigator.onLine) return;
-      try {
-        socket = new WebSocket(
-          root.replace(/^http/, "ws") + "/realtime/v1/websocket?apikey=" +
-            encodeURIComponent(key) + "&vsn=1.0.0"
-        );
-      } catch (error) {
-        return;
-      }
-
-      socket.onopen = function () {
-        attempt = 0;
-        socket.send(JSON.stringify({
-          topic: "realtime:arenas-live",
-          event: "phx_join",
-          payload: {
-            config: {
-              broadcast: { self: false },
-              presence: { key: "" },
-              postgres_changes: [{ event: "*", schema: "public", table: "menu_prices" }]
-            },
-            access_token: key
-          },
-          ref: String(++ref)
-        }));
-
-        clearInterval(beat);
-        beat = setInterval(function () {
-          if (socket && socket.readyState === 1) {
-            socket.send(JSON.stringify({ topic: "phoenix", event: "heartbeat", payload: {}, ref: String(++ref) }));
-          }
-        }, 25000);
-      };
-
-      socket.onmessage = function (event) {
-        var message;
-        try { message = JSON.parse(event.data); } catch (error) { return; }
-        /* El formato del evento cambia entre versiones de Realtime:
-           cualquier aviso de cambio provoca una relectura completa. */
-        if (message.event === "postgres_changes") load(true);
-      };
-
-      socket.onclose = function () {
-        clearInterval(beat);
-        socket = null;
-        if (attempt >= 6) return; /* el sondeo sigue cubriendo */
-        attempt += 1;
-        setTimeout(connect, Math.min(30000, 1500 * Math.pow(2, attempt)));
-      };
-
-      socket.onerror = function () { /* onclose reintenta */ };
-    }
-
-    /* --- red de seguridad: sondeo ligero mientras la página esté abierta --- */
+    /* --- refresco periódico: cada 15 s se relee la tabla (2 KB) --- */
     function poll() {
       if (document.visibilityState === "visible" && navigator.onLine) load(true);
     }
 
     load(false);
-    connect();
-    setInterval(poll, 20000);
+    setInterval(poll, 15000);
 
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") load(true);
     });
     window.addEventListener("focus", function () { load(true); });
-    window.addEventListener("online", function () { load(true); connect(); });
+    window.addEventListener("online", function () { load(true); });
     window.addEventListener("offline", function () { setLive("off", "Sin conexión"); });
   })();
 
