@@ -1315,6 +1315,13 @@ a {
   }
 }
 
+/* En el móvil la barra se apila y cada fila cuenta: la sonda sobra. */
+@media (max-width: 720px) {
+  .live {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .toast {
     transform: translate(-50%, 0);
