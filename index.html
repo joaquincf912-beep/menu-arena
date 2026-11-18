@@ -8,7 +8,7 @@
 (function () {
   var prefix = location.pathname.indexOf("/menu-arena") === 0 ? "/menu-arena/" : "";
   document.write('<base href="' + prefix + '">');
-  document.write('<link rel="stylesheet" href="' + prefix + 'assets/styles.css?v=11">');
+  document.write('<link rel="stylesheet" href="' + prefix + 'assets/styles.css?v=12">');
   document.write('<link rel="preload" as="image" href="' + prefix + 'assets/img/hero-mobile.webp" media="(max-width: 720px)">');
   document.write('<link rel="preload" as="image" href="' + prefix + 'assets/img/hero.webp" media="(min-width: 721px)">');
 })();
@@ -60,6 +60,7 @@
 <div class="toolbar" id="toolbar">
   <div class="toolbar__inner">
     <div class="toolbar__brand">Arenas<span>Grill · Bar</span></div>
+    <span class="live" id="live" data-state="wait" title="Los precios se actualizan solos desde el panel del restaurante"><i></i><b>Conectando</b></span>
     <nav class="chips" id="chips" aria-label="Categorías del menú"></nav>
     <div class="search" role="search">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -94,7 +95,7 @@
    el primer intento. */
 (function () {
   var prefix = location.pathname.indexOf("/menu-arena") === 0 ? "/menu-arena/" : "";
-  ["config.js?v=1", "pricing.js?v=1", "data.js?v=11", "app.js?v=13"].forEach(function (file) {
+  ["config.js?v=1", "pricing.js?v=1", "data.js?v=11", "app.js?v=14"].forEach(function (file) {
     document.write('<script src="' + prefix + 'assets/' + file + '"><\/script>');
   });
 })();

@@ -150,36 +150,195 @@
   );
 
   /* ---------- precios en vivo (Supabase) ---------- */
+  /* Sonda de estado en la barra + aviso cuando llega un cambio. */
 
-  (function syncPrices() {
+  var liveBadge = document.getElementById("live");
+  var liveLabel = liveBadge ? liveBadge.querySelector("b") : null;
+
+  var setLive = function (state, text) {
+    if (!liveBadge) return;
+    liveBadge.setAttribute("data-state", state);
+    if (liveLabel) liveLabel.textContent = text || (state === "on" ? "Precios en vivo" : state === "off" ? "Sin conexión" : "Conectando");
+  };
+
+  var toast = (function () {
+    var node = document.createElement("div");
+    node.className = "toast";
+    node.setAttribute("role", "status");
+    node.setAttribute("aria-live", "polite");
+    node.hidden = true;
+    document.body.appendChild(node);
+    var hideTimer;
+    return function (text) {
+      node.textContent = text;
+      node.hidden = false;
+      requestAnimationFrame(function () { node.classList.add("is-on"); });
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function () {
+        node.classList.remove("is-on");
+        hideTimer = setTimeout(function () { node.hidden = true; }, 320);
+      }, 2800);
+    };
+  })();
+
+  var flash = function (node) {
+    node.classList.remove("is-live");
+    /* fuerza el reinicio de la animación */
+    void node.offsetWidth;
+    node.classList.add("is-live");
+    setTimeout(function () { node.classList.remove("is-live"); }, 1100);
+  };
+
+  var applyRows = function (rows, announce) {
+    var changed = 0;
+    (rows || []).forEach(function (row) {
+      var item = itemByKey[row.key];
+      var card = cardByKey[row.key];
+      if (!item || !card) return;
+
+      var node = card.querySelector('[data-role="price"]');
+      var before = node ? node.textContent : "";
+
+      if (row.price !== null && row.price !== undefined) item.price = Number(row.price);
+      if (Array.isArray(row.options) && row.options.length) {
+        item.options = row.options.map(function (option) {
+          return {
+            label: option.label,
+            price: option.price === null || option.price === undefined ? null : Number(option.price)
+          };
+        });
+      }
+      paintPrices(card, item);
+
+      if (node && node.textContent !== before) {
+        changed += 1;
+        flash(node);
+      }
+    });
+
+    if (changed && announce) {
+      toast(changed === 1 ? "Precio actualizado" : changed + " precios actualizados");
+    }
+  };
+
+  (function livePrices() {
     var config = window.ARENAS_CONFIG || {};
     if (!pricing || !config.supabaseUrl || !config.supabaseAnonKey) return;
 
-    var endpoint = String(config.supabaseUrl).replace(/\/$/, "") +
-      "/rest/v1/menu_prices?select=key,price,options";
+    var root = String(config.supabaseUrl).replace(/\/$/, "");
+    var key = config.supabaseAnonKey;
+    var endpoint = root + "/rest/v1/menu_prices?select=key,price,options";
+    var loading = false;
+    var loaded = false;
 
-    fetch(endpoint, { headers: { apikey: config.supabaseAnonKey } })
-      .then(function (res) { return res.ok ? res.json() : []; })
-      .then(function (rows) {
-        (rows || []).forEach(function (row) {
-          var item = itemByKey[row.key];
-          var card = cardByKey[row.key];
-          if (!item || !card) return;
-          if (row.price !== null && row.price !== undefined) item.price = Number(row.price);
-          if (Array.isArray(row.options) && row.options.length) {
-            item.options = row.options.map(function (option) {
-              return {
-                label: option.label,
-                price: option.price === null || option.price === undefined ? null : Number(option.price)
-              };
-            });
-          }
-          paintPrices(card, item);
-        });
+    setLive("wait");
+
+    /* --- lectura REST: la fuente real de los precios --- */
+    function load(announce) {
+      if (loading) return Promise.resolve();
+      loading = true;
+
+      var controller = "AbortController" in window ? new AbortController() : null;
+      var timer = setTimeout(function () { if (controller) controller.abort(); }, 9000);
+
+      return fetch(endpoint, {
+        headers: { apikey: key, Authorization: "Bearer " + key, Accept: "application/json" },
+        cache: "no-store",
+        signal: controller ? controller.signal : undefined
       })
-      .catch(function () {
-        /* sin conexión o sin configurar: se mantienen los precios locales */
-      });
+        .then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        })
+        .then(function (rows) {
+          applyRows(rows, loaded && announce);
+          loaded = true;
+          setLive("on");
+        })
+        .catch(function () {
+          setLive("off", navigator.onLine ? "Precios locales" : "Sin conexión");
+        })
+        .then(function () {
+          clearTimeout(timer);
+          loading = false;
+        });
+    }
+
+    /* --- canal en tiempo real: cualquier cambio dispara una relectura --- */
+    var socket = null;
+    var beat = null;
+    var attempt = 0;
+    var ref = 0;
+
+    function connect() {
+      if (!("WebSocket" in window) || !navigator.onLine) return;
+      try {
+        socket = new WebSocket(
+          root.replace(/^http/, "ws") + "/realtime/v1/websocket?apikey=" +
+            encodeURIComponent(key) + "&vsn=1.0.0"
+        );
+      } catch (error) {
+        return;
+      }
+
+      socket.onopen = function () {
+        attempt = 0;
+        socket.send(JSON.stringify({
+          topic: "realtime:arenas-live",
+          event: "phx_join",
+          payload: {
+            config: {
+              broadcast: { self: false },
+              presence: { key: "" },
+              postgres_changes: [{ event: "*", schema: "public", table: "menu_prices" }]
+            },
+            access_token: key
+          },
+          ref: String(++ref)
+        }));
+
+        clearInterval(beat);
+        beat = setInterval(function () {
+          if (socket && socket.readyState === 1) {
+            socket.send(JSON.stringify({ topic: "phoenix", event: "heartbeat", payload: {}, ref: String(++ref) }));
+          }
+        }, 25000);
+      };
+
+      socket.onmessage = function (event) {
+        var message;
+        try { message = JSON.parse(event.data); } catch (error) { return; }
+        /* El formato del evento cambia entre versiones de Realtime:
+           cualquier aviso de cambio provoca una relectura completa. */
+        if (message.event === "postgres_changes") load(true);
+      };
+
+      socket.onclose = function () {
+        clearInterval(beat);
+        socket = null;
+        if (attempt >= 6) return; /* el sondeo sigue cubriendo */
+        attempt += 1;
+        setTimeout(connect, Math.min(30000, 1500 * Math.pow(2, attempt)));
+      };
+
+      socket.onerror = function () { /* onclose reintenta */ };
+    }
+
+    /* --- red de seguridad: sondeo ligero mientras la página esté abierta --- */
+    function poll() {
+      if (document.visibilityState === "visible" && navigator.onLine) load(true);
+    }
+
+    load(false);
+    connect();
+    setInterval(poll, 20000);
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") load(true);
+    });
+    window.addEventListener("focus", function () { load(true); });
+    window.addEventListener("online", function () { load(true); connect(); });
+    window.addEventListener("offline", function () { setLive("off", "Sin conexión"); });
   })();
 
   /* ---------- navegación activa ---------- */
