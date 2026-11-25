@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Loboburguer Restaurant">
+  <g fill="none" stroke="#14120F" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="120" r="104" stroke-width="9"/>
+    <circle cx="120" cy="120" r="92.5" stroke-width="2.4"/>
+
+    <!-- tenedor -->
+    <g stroke-width="4.6">
+      <path d="M62 44v26"/>
+      <path d="M71 44v26"/>
+      <path d="M80 44v26"/>
+      <path d="M89 44v26"/>
+      <path d="M62 66c0 12 5 17 13.5 20"/>
+      <path d="M89 66c0 12-5 17-13.5 20"/>
+      <path d="M75.5 86v32"/>
+    </g>
+
+    <!-- cuchara -->
+    <g stroke-width="4.6">
+      <ellipse cx="120" cy="63" rx="12.5" ry="20"/>
+      <path d="M120 83v35"/>
+    </g>
+
+    <!-- cuchillo -->
+    <g stroke-width="4.6">
+      <path d="M165 44c-8 10-11 26-11 42 0 8 2 13 7 15v17"/>
+      <path d="M165 44c4 14 4 44 0 57"/>
+    </g>
+  </g>
+
+  <!-- cinta -->
+  <path d="M16 100h208l-9 12 9 12H16l9-12z" fill="#14120F"/>
+  <text x="120" y="117.5" text-anchor="middle" fill="#F7F4EF"
+        font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="21" font-weight="800"
+        letter-spacing="0.6">LOBOBURGUER</text>
+
+  <text x="120" y="150" text-anchor="middle" fill="#14120F"
+        font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="15.5" font-weight="700"
+        letter-spacing="2.2">RESTAURANT</text>
+</svg>
