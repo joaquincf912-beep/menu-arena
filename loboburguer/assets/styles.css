@@ -33,7 +33,6 @@ html {
 
 body {
   margin: 0;
-  overflow-x: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
@@ -484,8 +483,7 @@ ul { padding: 0; list-style: none; }
 .dish__price.is-soft {
   font-size: 10px;
   font-weight: 400;
-  letter-spacing: .12em;
-  text-transform: lowercase;
+  letter-spacing: .1em;
   color: var(--muted);
 }
 
