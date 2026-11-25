@@ -56,6 +56,21 @@
   var registry = {};
   var defaults = {};
 
+  var meta = { removed: [], added: [] };
+  var stateCache = {};
+  var renderedSig = "";
+  var sections = [];
+  var chipMap = {};
+  var navObserver = null;
+
+  var signature = function (value) {
+    var removed = (value && value.removed) || [];
+    var added = (value && value.added) || [];
+    return removed.join(",") + "|" + added.map(function (item) {
+      return [item.section, item.id, item.name, item.sizeLabel || "", item.desc || "", item.price == null ? "" : item.price, item.img || ""].join("~");
+    }).join("|");
+  };
+
   var itemMarkup = function (section, item) {
     var key = section.id + ":" + item.id;
     defaults[key] = {
@@ -92,29 +107,52 @@
     "</article>";
   };
 
-  var blocks = [];
-  var chipLinks = [];
+  /* El panel puede quitar platos o sumar platos propios; la carta se
+     reconstruye cuando esa estructura cambia. */
 
-  menu.sections.forEach(function (section) {
-    blocks.push(
-      '<section class="cat" id="' + esc(section.id) + '" data-section="' + esc(section.id) + '">' +
-        '<header class="cat__head">' +
-          '<p class="cat__index">' + section.items.length +
-            (section.items.length === 1 ? " plato" : " platos") + "</p>" +
-          '<h2 class="cat__title">' + esc(section.title) + "</h2>" +
-          (section.blurb ? '<p class="cat__blurb">' + esc(section.blurb) + "</p>" : "") +
-          '<div class="cat__rule" aria-hidden="true"><i></i></div>' +
-        "</header>" +
-        '<div class="grid">' + section.items.map(function (item) { return itemMarkup(section, item); }).join("") + "</div>" +
-      "</section>"
-    );
+  var buildSections = function () {
+    var removed = {};
+    (meta.removed || []).forEach(function (key) { removed[key] = true; });
 
-    chipLinks.push('<a class="chip" href="#' + esc(section.id) + '" data-target="' + esc(section.id) + '">' +
-      esc(section.title) + "</a>");
-  });
+    return menu.sections.map(function (section) {
+      var items = section.items.filter(function (item) {
+        return !removed[section.id + ":" + item.id];
+      });
+      (meta.added || []).forEach(function (item) {
+        if (item.section === section.id && !removed[section.id + ":" + item.id]) items.push(item);
+      });
+      return { id: section.id, title: section.title, blurb: section.blurb, items: items };
+    }).filter(function (section) { return section.items.length > 0; });
+  };
 
-  main.innerHTML = blocks.join("");
-  chips.innerHTML = chipLinks.join("");
+  var draw = function () {
+    var list = buildSections();
+    var blocks = [];
+    var chipLinks = [];
+
+    defaults = {};
+    registry = {};
+
+    list.forEach(function (section) {
+      blocks.push(
+        '<section class="cat" id="' + esc(section.id) + '" data-section="' + esc(section.id) + '">' +
+          '<header class="cat__head">' +
+            '<p class="cat__index">' + section.items.length +
+              (section.items.length === 1 ? " plato" : " platos") + "</p>" +
+            '<h2 class="cat__title">' + esc(section.title) + "</h2>" +
+            (section.blurb ? '<p class="cat__blurb">' + esc(section.blurb) + "</p>" : "") +
+            '<div class="cat__rule" aria-hidden="true"><i></i></div>' +
+          "</header>" +
+          '<div class="grid">' + section.items.map(function (item) { return itemMarkup(section, item); }).join("") + "</div>" +
+        "</section>"
+      );
+
+      chipLinks.push('<a class="chip" href="#' + esc(section.id) + '" data-target="' + esc(section.id) + '">' +
+        esc(section.title) + "</a>");
+    });
+
+    main.innerHTML = blocks.join("");
+    chips.innerHTML = chipLinks.join("");
 
   Array.prototype.forEach.call(main.querySelectorAll(".dish"), function (node) {
     registry[node.getAttribute("data-key")] = {
@@ -124,11 +162,39 @@
     };
   });
 
-  Array.prototype.forEach.call(main.querySelectorAll(".dish__ph img"), function (img) {
-    img.addEventListener("error", function () {
-      img.remove();
+    Array.prototype.forEach.call(main.querySelectorAll(".dish__ph img"), function (img) {
+      img.addEventListener("error", function () {
+        img.remove();
+      });
     });
-  });
+
+    sections = Array.prototype.slice.call(main.querySelectorAll(".cat"));
+    chipMap = {};
+    Array.prototype.forEach.call(chips.children, function (chip) {
+      chipMap[chip.getAttribute("data-target")] = chip;
+    });
+
+    if (navObserver) navObserver.disconnect();
+    navObserver = null;
+
+    if ("IntersectionObserver" in window) {
+      navObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) markActive(entry.target.id);
+        });
+      }, { rootMargin: "-38% 0px -56% 0px", threshold: 0 });
+      sections.forEach(function (section) { navObserver.observe(section); });
+    }
+
+    renderedSig = signature(meta);
+
+    if (typeof paint === "function") {
+      Object.keys(registry).forEach(function (key) { paint(key, stateCache[key] || null, false); });
+    }
+    if (search && search.value.trim() && typeof applyFilter === "function") applyFilter();
+  };
+
+  draw();
 
   /* ---------- pintar precios e imágenes ---------- */
 
@@ -213,8 +279,17 @@
     var loading = false;
 
     var applyState = function (state) {
+      stateCache = state && typeof state === "object" ? state : {};
+
+      var nextMeta = stateCache.__loboburguer__ || { removed: [], added: [] };
+      if (signature(nextMeta) !== renderedSig) {
+        meta = nextMeta;
+        draw();
+        return;
+      }
+
       Object.keys(registry).forEach(function (key) {
-        var next = (state && state[key]) || null;
+        var next = stateCache[key] || null;
         if (JSON.stringify(next) === JSON.stringify(liveValue[key] || null)) return;
         liveValue[key] = next;
         paint(key, next, true);
@@ -289,12 +364,6 @@
 
   /* ---------- navegación ---------- */
 
-  var sections = Array.prototype.slice.call(main.querySelectorAll(".cat"));
-  var chipMap = {};
-  Array.prototype.forEach.call(chips.children, function (chip) {
-    chipMap[chip.getAttribute("data-target")] = chip;
-  });
-
   var markActive = function (id) {
     Array.prototype.forEach.call(chips.children, function (chip) { chip.classList.remove("is-active"); });
     var active = chipMap[id];
@@ -304,15 +373,6 @@
       chips.scrollTo({ left: Math.max(0, active.offsetLeft - 24), behavior: "smooth" });
     }
   };
-
-  if ("IntersectionObserver" in window) {
-    var navObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) markActive(entry.target.id);
-      });
-    }, { rootMargin: "-38% 0px -56% 0px", threshold: 0 });
-    sections.forEach(function (section) { navObserver.observe(section); });
-  }
 
   chips.addEventListener("click", function (event) {
     var chip = event.target.closest(".chip");

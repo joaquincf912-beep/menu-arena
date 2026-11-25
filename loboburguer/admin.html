@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/admin.css?v=5">
+<link rel="stylesheet" href="assets/admin.css?v=6">
 <link rel="icon" href="assets/img/logo.svg">
 </head>
 <body>
@@ -28,11 +28,12 @@
 <div class="bar" id="bar" data-state="idle" hidden>
   <span class="bar__dot" aria-hidden="true"></span>
   <span class="bar__text" id="barText"></span>
+  <button class="bar__retry" id="undo" type="button" hidden>Deshacer</button>
   <button class="bar__retry" id="retry" type="button" hidden>Reintentar</button>
 </div>
 
 <script src="assets/config.js?v=3"></script>
 <script src="assets/data.js?v=5"></script>
-<script src="assets/admin.js?v=6"></script>
+<script src="assets/admin.js?v=8"></script>
 </body>
 </html>

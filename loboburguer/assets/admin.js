@@ -1,4 +1,4 @@
-/* Loboburguer — panel: PIN, precios, fotos y guardado automático en Supabase. */
+/* Loboburguer — panel: PIN, precios, fotos, platos nuevos y eliminados. */
 (function () {
   var menu = window.LOBO_MENU;
   var config = window.LOBO_CONFIG || {};
@@ -6,6 +6,7 @@
   var bar = document.getElementById("bar");
   var barText = document.getElementById("barText");
   var retryBtn = document.getElementById("retry");
+  var undoBtn = document.getElementById("undo");
 
   var base = String(config.supabaseUrl || "").replace(/\/$/, "");
   var apiKey = config.supabaseKey || "";
@@ -17,6 +18,7 @@
   var defaults = {};
   var current = {};
   var saved = {};
+  var meta = { removed: [], added: [] };
   var dirty = false;
   var saving = false;
   var queued = false;
@@ -24,6 +26,7 @@
   var retryTimer = null;
   var hideTimer = null;
   var started = false;
+  var undoState = null;
 
   if (!menu) return;
 
@@ -44,12 +47,18 @@
     return isFinite(number) && number >= 0 ? number : null;
   }
 
-  function toInput(value) {
-    return value === null || value === undefined ? "" : String(value);
-  }
-
   function priceText(value) {
     return value === null || value === undefined ? "" : String(value).replace(".", ",");
+  }
+
+  function slugify(text) {
+    return String(text == null ? "" : text)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 30) || "plato";
   }
 
   function photoSrc(value) {
@@ -63,14 +72,31 @@
     return Array.prototype.slice.call(app.querySelectorAll(".row"));
   }
 
+  function normalizeMeta(raw) {
+    var source = raw && typeof raw === "object" ? raw : {};
+    return {
+      removed: Array.isArray(source.removed) ? source.removed.slice() : [],
+      added: Array.isArray(source.added) ? source.added.slice() : []
+    };
+  }
+
+  function countText(total) {
+    return total + (total === 1 ? " plato" : " platos");
+  }
+
   function showBar(text, state, autoHide) {
     clearTimeout(hideTimer);
     bar.hidden = false;
     bar.setAttribute("data-state", state);
     barText.textContent = text;
     retryBtn.hidden = state !== "error";
+    undoBtn.hidden = !undoState;
     if (autoHide) {
-      hideTimer = setTimeout(function () { bar.hidden = true; }, 2600);
+      hideTimer = setTimeout(function () {
+        bar.hidden = true;
+        undoBtn.hidden = true;
+        undoState = null;
+      }, typeof autoHide === "number" ? autoHide : 2600);
     }
   }
 
@@ -88,7 +114,7 @@
     box.innerHTML =
       '<img src="assets/img/logo.svg" alt="" aria-hidden="true">' +
       "<h1>Panel de la carta</h1>" +
-      "<p>Escribe el PIN del restaurante para cambiar precios y fotos.</p>" +
+      "<p>Escribe el PIN del restaurante para cambiar precios, fotos y platos.</p>" +
       '<input name="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="PIN" placeholder="••••">' +
       '<button type="submit">Entrar</button>';
     if (message) {
@@ -176,6 +202,24 @@
 
   /* ---------- panel ---------- */
 
+  function viewSections() {
+    var removed = {};
+    meta.removed.forEach(function (key) { removed[key] = true; });
+
+    return menu.sections.map(function (section) {
+      var items = section.items.filter(function (item) {
+        return !removed[section.id + ":" + item.id];
+      });
+      meta.added.forEach(function (item) {
+        if (item.section !== section.id) return;
+        var copy = { id: item.id, name: item.name, desc: item.desc, sizeLabel: item.sizeLabel, price: item.price, img: item.img, options: item.options };
+        copy.isCustom = true;
+        items.push(copy);
+      });
+      return { id: section.id, title: section.title, items: items };
+    });
+  }
+
   function entryOf(key) {
     if (!current[key]) current[key] = {};
     return current[key];
@@ -214,8 +258,6 @@
   function refreshRow(key) {
     var row = app.querySelector('[data-key="' + key + '"]');
     if (!row) return;
-    var fallback = defaults[key] || {};
-
     var priceInput = row.querySelector("[data-price]");
     if (priceInput) priceInput.value = priceText(priceOf(key));
 
@@ -232,6 +274,14 @@
     }
 
     syncChangeMark(key);
+  }
+
+  function syncCount(sectionId) {
+    var panel = app.querySelector('.panel[data-section="' + sectionId + '"]');
+    if (!panel) return;
+    var total = panel.querySelectorAll(".row").length;
+    var count = panel.querySelector(".panel__count");
+    if (count) count.textContent = countText(total);
   }
 
   function buildRow(section, item) {
@@ -280,7 +330,6 @@
           var shown = thumb.querySelector("img");
           if (shown) shown.src = publicUrl;
           dirty = true;
-          current = current;
           syncChangeMark(key);
           return save();
         })
@@ -333,6 +382,7 @@
     /* acciones */
     var actions = document.createElement("div");
     actions.className = "row__actions";
+
     var reset = document.createElement("button");
     reset.type = "button";
     reset.className = "row__reset";
@@ -345,6 +395,44 @@
       onEdit(key);
     });
     actions.appendChild(reset);
+
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "row__del";
+    remove.title = "Eliminar este plato de la carta";
+    remove.setAttribute("aria-label", "Eliminar " + item.name);
+    remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    remove.addEventListener("click", function () {
+      var question = '¿Eliminar "' + item.name + '" de la carta?';
+      if (!window.confirm(question)) return;
+
+      if (item.isCustom) {
+        var index = -1;
+        meta.added.forEach(function (record, position) {
+          if (record.section === section.id && record.id === item.id) index = position;
+        });
+        if (index > -1) {
+          undoState = { type: "custom", index: index, record: meta.added[index] };
+          meta.added.splice(index, 1);
+        }
+      } else {
+        undoState = { type: "original", key: key, entry: current[key] || null };
+        if (meta.removed.indexOf(key) === -1) meta.removed.push(key);
+      }
+      delete current[key];
+      delete defaults[key];
+
+      var node = app.querySelector('[data-key="' + key + '"]');
+      if (node) node.remove();
+      syncCount(section.id);
+
+      dirty = true;
+      clearTimeout(retryTimer);
+      showBar("Guardando…", "saving");
+      save();
+    });
+    actions.appendChild(remove);
+
     row.appendChild(actions);
 
     /* opciones */
@@ -364,8 +452,7 @@
         optInput.setAttribute("data-opt", option.label);
         optInput.setAttribute("aria-label", option.label + " de " + item.name);
         optInput.addEventListener("input", function () {
-          var entry = entryOf(key);
-          entry.options = optionsFromRow(row, key);
+          entryOf(key).options = optionsFromRow(row, key);
           onEdit(key);
         });
         optInput.addEventListener("blur", function () {
@@ -391,27 +478,113 @@
     });
   }
 
+  /* ---------- nuevo plato ---------- */
+
+  function buildAddForm(section) {
+    var form = document.createElement("form");
+    form.className = "add";
+    form.hidden = true;
+    form.innerHTML =
+      '<div class="add__grid">' +
+        '<label class="add__wide">Nombre del plato<input name="name" type="text" maxlength="60" required autocomplete="off" placeholder="Ej. Parrilla mixta"></label>' +
+        '<label>Precio $<input name="price" type="text" inputmode="decimal" autocomplete="off" placeholder="Opcional"></label>' +
+        '<label>Tamaño<input name="size" type="text" maxlength="18" autocomplete="off" placeholder="Opcional"></label>' +
+      "</div>" +
+      '<label>Descripción <span>Opcional</span><textarea name="desc" rows="2" maxlength="160" placeholder="Los ingredientes o el acompañamiento"></textarea></label>' +
+      '<label class="add__photo">Foto <span>Opcional · JPG, PNG o WebP</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>' +
+      '<div class="add__actions">' +
+        '<button type="button" class="add__cancel">Cancelar</button>' +
+        '<button type="submit" class="add__save">Agregar a la carta</button>' +
+      "</div>";
+
+    form.querySelector(".add__cancel").addEventListener("click", function () {
+      form.reset();
+      form.hidden = true;
+    });
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var nameInput = form.querySelector('[name="name"]');
+      var name = nameInput.value.trim();
+      if (!name) {
+        nameInput.focus();
+        return;
+      }
+
+      var file = form.querySelector('[name="photo"]').files[0];
+      if (file && file.size > 8 * 1024 * 1024) {
+        showBar("La foto pesa más de 8 MB. Usa una imagen más liviana.", "error");
+        return;
+      }
+
+      var id = slugify(name) + "-" + Date.now().toString(36).slice(-4);
+      var key = section.id + ":" + id;
+      var record = {
+        section: section.id,
+        id: id,
+        name: name,
+        sizeLabel: form.querySelector('[name="size"]').value.trim() || null,
+        desc: form.querySelector('[name="desc"]').value.trim() || null,
+        price: toNumber(form.querySelector('[name="price"]').value),
+        img: null
+      };
+
+      var submit = form.querySelector(".add__save");
+      submit.disabled = true;
+
+      var photo = file
+        ? uploadPhoto(file, key).then(function (url) {
+            record.img = url;
+          }).catch(function () {
+            showBar("El plato se agregó sin foto: no se pudo subir la imagen.", "error");
+          })
+        : Promise.resolve();
+
+      photo.then(function () {
+        meta.added.push(record);
+        dirty = true;
+        render();
+
+        var row = app.querySelector('[data-key="' + key + '"]');
+        if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        showBar("Guardando…", "saving");
+        save();
+      });
+    });
+
+    return form;
+  }
+
+  /* ---------- render ---------- */
+
   function render() {
+    var openPanels = {};
+    Array.prototype.forEach.call(app.querySelectorAll(".panel"), function (panel) {
+      openPanels[panel.getAttribute("data-section")] = panel.open;
+    });
+
     app.innerHTML = "";
 
     var intro = document.createElement("div");
     intro.className = "intro";
     intro.innerHTML =
-      "<h1>Precios y fotos de la carta</h1>" +
-      "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>";
+      "<h1>Precios, fotos y platos de la carta</h1>" +
+      "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Con el botón <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas de la carta. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>";
     app.appendChild(intro);
 
-    menu.sections.forEach(function (section, index) {
+    viewSections().forEach(function (section, index) {
       var panel = document.createElement("details");
       panel.className = "panel";
-      panel.open = index < 1;
+      panel.setAttribute("data-section", section.id);
+      panel.open = openPanels[section.id] !== undefined ? openPanels[section.id] : index < 1;
 
       var head = document.createElement("summary");
       head.className = "panel__head";
       head.innerHTML =
         '<svg class="panel__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         '<span class="panel__title">' + esc(section.title) + "</span>" +
-        '<span class="panel__count">' + section.items.length + " platos</span>";
+        '<span class="panel__count">' + countText(section.items.length) + "</span>";
       panel.appendChild(head);
 
       var body = document.createElement("div");
@@ -420,6 +593,26 @@
         body.appendChild(buildRow(section, item));
       });
       panel.appendChild(body);
+
+      var foot = document.createElement("div");
+      foot.className = "panel__foot";
+      var openForm = document.createElement("button");
+      openForm.type = "button";
+      openForm.className = "add-btn";
+      openForm.innerHTML = '<span aria-hidden="true">+</span> Agregar plato';
+      var form = buildAddForm(section);
+
+      openForm.addEventListener("click", function () {
+        form.hidden = !form.hidden;
+        if (!form.hidden) {
+          var field = form.querySelector('[name="name"]');
+          if (field) field.focus();
+        }
+      });
+
+      foot.appendChild(openForm);
+      panel.appendChild(foot);
+      panel.appendChild(form);
       app.appendChild(panel);
     });
   }
@@ -428,6 +621,13 @@
 
   function payload() {
     var out = {};
+
+    if (meta.removed.length || meta.added.length) {
+      out.__loboburguer__ = {
+        removed: meta.removed.slice(),
+        added: meta.added.map(function (record) { return record; })
+      };
+    }
 
     rowNodes().forEach(function (row) {
       var key = row.getAttribute("data-key");
@@ -502,7 +702,7 @@
         dirty = false;
         saved = JSON.parse(JSON.stringify(body));
         clearTimeout(retryTimer);
-        showBar("Guardado. La carta ya muestra los cambios.", "ok", true);
+        showBar("Guardado. La carta ya muestra los cambios.", "ok", undoState ? 6000 : 2600);
       })
       .catch(function () {
         dirty = true;
@@ -521,6 +721,22 @@
 
   retryBtn.addEventListener("click", function () {
     clearTimeout(retryTimer);
+    save();
+  });
+
+  undoBtn.addEventListener("click", function () {
+    if (!undoState) return;
+    if (undoState.type === "custom") {
+      meta.added.splice(undoState.index, 0, undoState.record);
+    } else {
+      meta.removed = meta.removed.filter(function (key) { return key !== undoState.key; });
+      if (undoState.entry) current[undoState.key] = undoState.entry;
+    }
+    undoState = null;
+    render();
+    dirty = true;
+    clearTimeout(retryTimer);
+    showBar("Guardando…", "saving");
     save();
   });
 
@@ -564,6 +780,7 @@
       .catch(function () { return null; })
       .then(function (state) {
         current = state || {};
+        meta = normalizeMeta(current.__loboburguer__);
         saved = JSON.parse(JSON.stringify(current));
         render();
         if (state) hideBar();
