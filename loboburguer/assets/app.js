@@ -302,6 +302,19 @@
     if (chip) markActive(chip.getAttribute("data-target"));
   });
 
+  /* Anclajes suaves: con <base>, dejar que el navegador navegue al hash
+     recargaría la página cuando se sirve sin barra final. */
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest ? event.target.closest('a[href^="#"]') : null;
+    if (!link) return;
+    var id = link.getAttribute("href").slice(1);
+    var target = id && document.getElementById(id);
+    if (!target) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (history.replaceState) history.replaceState(null, "", "#" + id);
+  });
+
   /* ---------- búsqueda ---------- */
 
   var search = document.getElementById("search");
