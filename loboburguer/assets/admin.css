@@ -476,6 +476,14 @@ h1, h2, p { margin: 0; }
 .bar__retry:hover { background: rgba(255, 255, 255, .26); }
 
 @media (max-width: 560px) {
+  .top { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+  .bar { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .row__price input,
+  .row__opt input { font-size: 16px; }
+  .row__price { padding-right: 12px; }
+  .lock { margin-top: 5vh; padding: 26px 22px; }
+  .lock input { font-size: 20px; }
+  .wrap { padding-bottom: 110px; }
   .row {
     grid-template-columns: 46px minmax(0, 1fr) 88px;
     grid-template-areas: "thumb name price" "thumb opts opts";

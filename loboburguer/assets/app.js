@@ -258,6 +258,18 @@
     window.addEventListener("online", load);
   }
 
+  /* ---------- alto real de la barra en el teléfono ---------- */
+
+  var header = document.getElementById("top");
+  var syncHead = function () {
+    if (!header) return;
+    document.documentElement.style.setProperty("--head", header.offsetHeight + "px");
+  };
+  syncHead();
+  window.addEventListener("resize", syncHead);
+  window.addEventListener("orientationchange", syncHead);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncHead);
+
   /* ---------- navegación ---------- */
 
   var sections = Array.prototype.slice.call(main.querySelectorAll(".cat"));
