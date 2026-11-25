@@ -6,6 +6,13 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="theme-color" content="#faf6f0">
 <title>Panel de la carta · Loboburguer</title>
+<script>
+(function () {
+  var p = location.pathname, i = p.lastIndexOf("/"), dir = p.slice(0, i + 1);
+  if (!/\.html?$/i.test(p) && !/\/$/.test(p)) dir = p + "/";
+  document.write('<base href="' + dir + '">');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
