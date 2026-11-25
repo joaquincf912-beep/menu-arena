@@ -270,6 +270,23 @@
   window.addEventListener("orientationchange", syncHead);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncHead);
 
+  /* ---------- barra de progreso ---------- */
+
+  var progress = document.getElementById("progress");
+
+  var updateProgress = function () {
+    if (!progress) return;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var value = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    progress.style.transform = "scaleX(" + value + ")";
+  };
+
+  window.addEventListener("scroll", updateProgress, { passive: true });
+  window.addEventListener("resize", updateProgress);
+  window.addEventListener("orientationchange", updateProgress);
+  window.addEventListener("load", updateProgress);
+  updateProgress();
+
   /* ---------- navegación ---------- */
 
   var sections = Array.prototype.slice.call(main.querySelectorAll(".cat"));
