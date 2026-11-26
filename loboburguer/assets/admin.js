@@ -28,6 +28,28 @@
   var started = false;
   var undoState = null;
 
+  /* Valores por defecto de la carta de domicilios: solo se usan si esa carta
+     todavía no tiene datos propios guardados. */
+  var DOMI_DEFAULTS = {
+    whatsapp: "584149552961",
+    phoneLabel: "0414-9552961",
+    minimum: 8,
+    timing: "35 a 50 minutos",
+    greeting: "Hola, quiero hacer un pedido a domicilio 🛵",
+    feeNote: "El envío se calcula según la distancia y la hora; te lo confirmamos por WhatsApp.",
+    hours: { open: "06:30", close: "00:00" },
+    lateFrom: "17:00",
+    pay: {
+      methods: ["Pago móvil", "Efectivo"],
+      notes: {
+        "Pago móvil": "Envíenme banco, cédula y teléfono para hacer la transferencia.",
+        "Efectivo": "Pago en efectivo al recibir el pedido."
+      }
+    }
+  };
+
+  var domi = null;
+
   if (!menu) return;
 
   /* ---------- utilidades ---------- */
@@ -82,6 +104,137 @@
 
   function countText(total) {
     return total + (total === 1 ? " plato" : " platos");
+  }
+
+  /* ---------- datos de la carta de domicilios ---------- */
+
+  function numberOr(value, fallback) {
+    var number = toNumber(value);
+    return number === null ? fallback : number;
+  }
+
+  function timeOr(value, fallback) {
+    var match = String(value == null ? "" : value).trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return fallback;
+    var h = Math.min(23, Number(match[1]));
+    var m = Math.min(59, Number(match[2]));
+    return (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m);
+  }
+
+  function normalizeDomi(raw) {
+    var source = raw && typeof raw === "object" ? raw : {};
+    var notes = source.pay && typeof source.pay.notes === "object" ? source.pay.notes : {};
+    var methods = Array.isArray(source.pay && source.pay.methods) && source.pay.methods.length
+      ? source.pay.methods.slice()
+      : DOMI_DEFAULTS.pay.methods.slice();
+    var hours = source.hours && typeof source.hours === "object" ? source.hours : {};
+
+    var out = {
+      whatsapp: String(source.whatsapp || DOMI_DEFAULTS.whatsapp).replace(/\D/g, "") || DOMI_DEFAULTS.whatsapp,
+      phoneLabel: String(source.phoneLabel || DOMI_DEFAULTS.phoneLabel),
+      minimum: numberOr(source.minimum, DOMI_DEFAULTS.minimum),
+      timing: String(source.timing || DOMI_DEFAULTS.timing),
+      greeting: String(source.greeting || DOMI_DEFAULTS.greeting),
+      feeNote: String(source.feeNote || DOMI_DEFAULTS.feeNote),
+      hours: {
+        open: timeOr(hours.open, DOMI_DEFAULTS.hours.open),
+        close: timeOr(hours.close, DOMI_DEFAULTS.hours.close)
+      },
+      lateFrom: timeOr(source.lateFrom, DOMI_DEFAULTS.lateFrom),
+      pay: { methods: methods, notes: {} }
+    };
+
+    methods.forEach(function (method) {
+      out.pay.notes[method] = String(notes[method] || DOMI_DEFAULTS.pay.notes[method] || "");
+    });
+
+    return out;
+  }
+
+  function buildDomiPanel(open) {
+    var panel = document.createElement("details");
+    panel.className = "panel";
+    panel.setAttribute("data-section", "domicilios");
+    panel.open = open !== undefined ? open : true;
+
+    var head = document.createElement("summary");
+    head.className = "panel__head";
+    head.innerHTML =
+      '<svg class="panel__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '<span class="panel__title">Carta de domicilios</span>' +
+      '<span class="panel__count" data-domi-wa></span>';
+    head.querySelector("[data-domi-wa]").textContent = "wa.me/" + domi.whatsapp;
+    panel.appendChild(head);
+
+    function field(name, label, value, mode, hint) {
+      return "<label>" + esc(label) +
+        '<input data-domi="' + name + '" type="text"' + (mode ? ' inputmode="' + mode + '"' : "") +
+        ' autocomplete="off" value="' + esc(value) + '">' +
+        (hint ? "<span>" + esc(hint) + "</span>" : "") +
+      "</label>";
+    }
+
+    function area(name, label, value) {
+      return "<label>" + esc(label) +
+        '<textarea data-domi="' + name + '" rows="2">' + esc(value) + "</textarea>" +
+      "</label>";
+    }
+
+    function timeField(name, label, value, hint) {
+      return "<label>" + esc(label) +
+        '<input data-domi="' + name + '" type="time" value="' + esc(value) + '">' +
+        (hint ? "<span>" + esc(hint) + "</span>" : "") +
+      "</label>";
+    }
+
+    var body = document.createElement("div");
+    body.className = "panel__body";
+
+    var form = document.createElement("form");
+    form.className = "domi";
+    form.innerHTML =
+      '<p class="domi__note">Solo cambia la carta de domicilios. Los platos, precios y fotos son los mismos del panel de abajo.</p>' +
+      '<div class="domi__grid">' +
+        field("whatsapp", "WhatsApp con código de país", domi.whatsapp, "numeric", "Ej. 584149552961") +
+        field("phoneLabel", "Teléfono visible", domi.phoneLabel) +
+        field("minimum", "Pedido mínimo $", priceText(domi.minimum), "decimal") +
+        field("timing", "Tiempo de entrega", domi.timing) +
+        timeField("hours:open", "Abre a las", domi.hours.open) +
+        timeField("hours:close", "Cierra a las", domi.hours.close, "12:00 de la noche = 00:00") +
+        timeField("lateFrom", "Carta de la noche desde", domi.lateFrom, "Hamburguesas y especiales de la noche") +
+      "</div>" +
+      field("greeting", "Saludo del botón de WhatsApp", domi.greeting) +
+      area("feeNote", "Texto del envío (sin costo fijo)", domi.feeNote) +
+      '<div class="domi__grid domi__grid--pay">' +
+        area("pay:Pago móvil", "Mensaje para Pago móvil", domi.pay.notes["Pago móvil"] || "") +
+        area("pay:Efectivo", "Mensaje para Efectivo", domi.pay.notes["Efectivo"] || "") +
+      "</div>" +
+      '<p class="domi__hint">El envío no tiene precio fijo: el cliente lo ve como “según distancia y hora” y se confirma en el WhatsApp. Elige Pago móvil o Efectivo solo para avisar cómo paga; la carta no cobra nada.</p>';
+
+    form.addEventListener("input", function (event) {
+      var node = event.target;
+      var key = node.getAttribute("data-domi");
+      if (!key) return;
+
+      if (key.indexOf("pay:") === 0) domi.pay.notes[key.slice(4)] = node.value;
+      else if (key === "whatsapp") domi.whatsapp = node.value.replace(/\D/g, "");
+      else if (key === "hours:open" || key === "hours:close") {
+        var part = key.slice(6);
+        domi.hours[part] = /^\d{1,2}:\d{2}$/.test(node.value) ? timeOr(node.value, domi.hours[part]) : domi.hours[part];
+      } else if (key === "lateFrom") domi.lateFrom = timeOr(node.value, domi.lateFrom);
+      else if (key === "minimum") domi[key] = numberOr(node.value, 0);
+      else domi[key] = node.value;
+
+      var badge = head.querySelector("[data-domi-wa]");
+      if (badge) badge.textContent = "wa.me/" + domi.whatsapp;
+      onEdit();
+    });
+
+    form.addEventListener("submit", function (event) { event.preventDefault(); });
+
+    body.appendChild(form);
+    panel.appendChild(body);
+    return panel;
   }
 
   function showBar(text, state, autoHide) {
@@ -634,8 +787,11 @@
     intro.className = "intro";
     intro.innerHTML =
       "<h1>Precios, fotos y platos de la carta</h1>" +
-      "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Con el botón <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas de la carta. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>";
+      "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Con el botón <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas de la carta. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>" +
+      "<p>En <strong>Carta de domicilios</strong> ajustas el WhatsApp, el horario del negocio, la hora en que se habilita la carta de la noche, el mínimo, el envío (que se confirma por WhatsApp según la distancia y la hora) y los textos de pago. Los platos y los precios son los mismos para las dos cartas.</p>";
     app.appendChild(intro);
+
+    if (domi) app.appendChild(buildDomiPanel(openPanels.domicilios));
 
     viewSections().forEach(function (section, index) {
       var panel = document.createElement("details");
@@ -685,6 +841,8 @@
 
   function payload() {
     var out = {};
+
+    if (domi) out.__domicilios__ = JSON.parse(JSON.stringify(domi));
 
     if (meta.removed.length || meta.added.length) {
       out.__loboburguer__ = {
@@ -844,6 +1002,8 @@
       .catch(function () { return null; })
       .then(function (state) {
         current = state || {};
+        domi = normalizeDomi(current.__domicilios__);
+        current.__domicilios__ = domi;
         meta = normalizeMeta(current.__loboburguer__);
         saved = JSON.parse(JSON.stringify(current));
         render();

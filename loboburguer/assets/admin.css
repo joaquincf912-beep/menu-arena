@@ -480,6 +480,76 @@ h1, h2, p { margin: 0; }
   vertical-align: 2px;
 }
 
+/* ---------- carta de domicilios ---------- */
+
+.domi {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 18px;
+  background: #fdfbf7;
+}
+
+.domi__note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.domi__hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.domi__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.domi__grid--pay { grid-template-columns: 1fr 1fr; }
+
+.domi label {
+  display: grid;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.domi label > span {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.domi input,
+.domi textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.domi textarea { resize: vertical; min-height: 58px; }
+
+.domi input:focus,
+.domi textarea:focus {
+  outline: 0;
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(109, 31, 39, .12);
+}
+
 /* ---------- entrada ---------- */
 
 .lock {
@@ -720,6 +790,8 @@ body.is-locked { overflow: hidden; }
   .row__actions { grid-area: actions; justify-content: flex-end; align-self: start; }
   .row__reset,
   .row__del { opacity: 1; width: 27px; height: 27px; }
+  .domi { padding: 14px; }
+  .domi__grid--pay { grid-template-columns: 1fr; }
   .add__grid { grid-template-columns: 1fr 1fr; }
   .add__grid .add__wide { grid-column: 1 / -1; }
   .add { padding: 4px 14px 18px; }
