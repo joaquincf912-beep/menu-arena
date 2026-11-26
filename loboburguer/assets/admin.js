@@ -105,6 +105,69 @@
     bar.hidden = true;
   }
 
+  /* ---------- confirmación ---------- */
+
+  function askConfirm(name) {
+    return new Promise(function (resolve) {
+      var layer = document.createElement("div");
+      layer.className = "confirm";
+      layer.innerHTML =
+        '<div class="confirm__box" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">' +
+          '<p class="confirm__tag">Quitar de la carta</p>' +
+          '<h2 class="confirm__title" id="confirmTitle"></h2>' +
+          '<p class="confirm__text" id="confirmText">Dejará de aparecer en la carta de las mesas. Puedes deshacerlo justo después.</p>' +
+          '<div class="confirm__actions">' +
+            '<button type="button" class="confirm__cancel">Cancelar</button>' +
+            '<button type="button" class="confirm__ok">Eliminar</button>' +
+          "</div>" +
+        "</div>";
+
+      var box = layer.firstChild;
+      box.querySelector(".confirm__title").textContent = "\u00bfEliminar \u201c" + name + "\u201d?";
+
+      var cancel = box.querySelector(".confirm__cancel");
+      var ok = box.querySelector(".confirm__ok");
+      var previous = document.activeElement;
+      var closed = false;
+
+      function onKey(event) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(false);
+        } else if (event.key === "Tab") {
+          if (event.shiftKey && document.activeElement === cancel) {
+            event.preventDefault();
+            ok.focus();
+          } else if (!event.shiftKey && document.activeElement === ok) {
+            event.preventDefault();
+            cancel.focus();
+          }
+        }
+      }
+
+      function close(result) {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener("keydown", onKey, true);
+        layer.remove();
+        document.body.classList.remove("is-locked");
+        if (previous && previous.focus) previous.focus();
+        resolve(result);
+      }
+
+      cancel.addEventListener("click", function () { close(false); });
+      ok.addEventListener("click", function () { close(true); });
+      layer.addEventListener("click", function (event) {
+        if (event.target === layer) close(false);
+      });
+
+      document.addEventListener("keydown", onKey, true);
+      document.body.classList.add("is-locked");
+      document.body.appendChild(layer);
+      cancel.focus();
+    });
+  }
+
   /* ---------- PIN ---------- */
 
   function lockScreen(message) {
@@ -403,33 +466,34 @@
     remove.setAttribute("aria-label", "Eliminar " + item.name);
     remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     remove.addEventListener("click", function () {
-      var question = '¿Eliminar "' + item.name + '" de la carta?';
-      if (!window.confirm(question)) return;
+      askConfirm(item.name).then(function (confirmed) {
+        if (!confirmed) return;
 
-      if (item.isCustom) {
-        var index = -1;
-        meta.added.forEach(function (record, position) {
-          if (record.section === section.id && record.id === item.id) index = position;
-        });
-        if (index > -1) {
-          undoState = { type: "custom", index: index, record: meta.added[index] };
-          meta.added.splice(index, 1);
+        if (item.isCustom) {
+          var index = -1;
+          meta.added.forEach(function (record, position) {
+            if (record.section === section.id && record.id === item.id) index = position;
+          });
+          if (index > -1) {
+            undoState = { type: "custom", index: index, record: meta.added[index] };
+            meta.added.splice(index, 1);
+          }
+        } else {
+          undoState = { type: "original", key: key, entry: current[key] || null };
+          if (meta.removed.indexOf(key) === -1) meta.removed.push(key);
         }
-      } else {
-        undoState = { type: "original", key: key, entry: current[key] || null };
-        if (meta.removed.indexOf(key) === -1) meta.removed.push(key);
-      }
-      delete current[key];
-      delete defaults[key];
+        delete current[key];
+        delete defaults[key];
 
-      var node = app.querySelector('[data-key="' + key + '"]');
-      if (node) node.remove();
-      syncCount(section.id);
+        var node = app.querySelector('[data-key="' + key + '"]');
+        if (node) node.remove();
+        syncCount(section.id);
 
-      dirty = true;
-      clearTimeout(retryTimer);
-      showBar("Guardando…", "saving");
-      save();
+        dirty = true;
+        clearTimeout(retryTimer);
+        showBar("Guardando…", "saving");
+        save();
+      });
     });
     actions.appendChild(remove);
 
