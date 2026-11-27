@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loboburguer Restaurant — Carta de noche</title>
+<meta name="description" content="Carta de noche de Loboburguer Restaurant: pollos a la brasa y broaster, parrillas al carbón, hamburguesas, especiales, arroz chino, postres y jugos.">
+<meta name="theme-color" content="#faf6f0">
+<base href="/loboburguer/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="assets/styles.css?v=15">
+<link rel="icon" href="assets/img/logo.svg">
+</head>
+<body>
+
+<section class="hero" id="inicio">
+  <img class="hero__photo" src="assets/img/hero-fire.jpg" alt="Salteado al fuego en la cocina de Loboburguer" width="1600" height="882" fetchpriority="high" decoding="async">
+  <div class="hero__veil" aria-hidden="true"></div>
+  <div class="hero__inner">
+    <img class="hero__emblem" src="assets/img/emblem.svg" alt="" width="74" height="74" aria-hidden="true">
+    <p class="hero__eyebrow">Parrilla · Cocina criolla</p>
+    <h1 class="hero__title">Loboburguer</h1>
+    <div class="hero__rule" aria-hidden="true"><span></span><i></i><span></span></div>
+    <p class="hero__menu">Carta de noche</p>
+    <p class="hero__tag">Pollos · Parrillas · Hamburguesas</p>
+  </div>
+  <a class="hero__down" href="#menu" aria-label="Ver la carta de noche">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13m0 0 5-5m-5 5-5-5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
+</section>
+
+<header class="top" id="top">
+  <div class="top__inner">
+    <a class="top__brand" href="#inicio">
+      <span class="top__name">Loboburguer</span>
+      <span class="top__sub">Restaurant</span>
+    </a>
+    <nav class="chips" id="chips" aria-label="Categorías de la carta de noche"></nav>
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m15.2 15.2 5 5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <input id="search" type="search" placeholder="Buscar plato" autocomplete="off" aria-label="Buscar un plato">
+    </label>
+  </div>
+  <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+</header>
+
+<main id="menu" class="menu"></main>
+
+<p class="empty" id="empty" hidden>No encontramos ningún plato con ese nombre.</p>
+
+<footer class="footer">
+  <div class="footer__inner">
+    <img class="footer__emblem" src="assets/img/emblem.svg" alt="" width="58" height="58" aria-hidden="true">
+    <p class="footer__name">Loboburguer</p>
+    <p class="footer__sub">Restaurant</p>
+    <div class="footer__rule" aria-hidden="true"></div>
+    <p class="footer__note">Precios en dólares. Carta de noche. Los contornos y el término de las carnes son a elección del comensal. Si tienes alguna alergia, avísale al mesonero.</p>
+    <div class="footer__links">
+      <a href="tel:+584149552961">0414-9552961</a>
+      <a href="https://instagram.com/loboburguer.restaurant" target="_blank" rel="noopener">@loboburguer.restaurant</a>
+    </div>
+    <a class="footer__credit" href="https://traccionweb.com" target="_blank" rel="noopener" aria-label="Sitio web realizado por TraccionWeb, abre traccionweb.com">
+      <span>Sitio web realizado por</span>
+      <strong>TraccionWeb</strong>
+      <span class="footer__credit-link">traccionweb.com<span aria-hidden="true">↗</span></span>
+    </a>
+    <p class="footer__legal">Fotografías ilustrativas · © 2026 Loboburguer Restaurant</p>
+  </div>
+</footer>
+
+<script src="assets/data-noche.js?v=1"></script>
+<script src="assets/app.js?v=11"></script>
+</body>
+</html>
