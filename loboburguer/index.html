@@ -6,8 +6,14 @@
 <title>Loboburguer Restaurant — Carta</title>
 <meta name="description" content="Carta de Loboburguer Restaurant: almuerzos del día, pollo a la brasa, parrillas al carbón, cachapas, arroz chino, hamburguesas, bebidas y postres.">
 <meta name="theme-color" content="#faf6f0">
-<!-- La carta también se publica en traccionweb.com/loboburguer (sin barra final). -->
-<base href="/loboburguer/">
+<script>
+/* La carta se publica en traccionweb.com/loboburguer y también en la raíz
+   de un dominio propio (loboburger.site): la base se elige según la ruta. */
+(function () {
+  var base = location.pathname.split("/")[1] === "loboburguer" ? "/loboburguer/" : "/";
+  document.write('<base href="' + base + '">');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://dlznvpmxolahwcvqsmli.supabase.co" crossorigin>

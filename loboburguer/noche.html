@@ -6,7 +6,13 @@
 <title>Loboburguer Restaurant — Carta de noche</title>
 <meta name="description" content="Carta de noche de Loboburguer Restaurant: pollos a la brasa y broaster, parrillas al carbón, hamburguesas, especiales, arroz chino, postres y jugos.">
 <meta name="theme-color" content="#faf6f0">
-<base href="/loboburguer/">
+<script>
+/* Igual en traccionweb.com/loboburguer que en la raíz de loboburger.site. */
+(function () {
+  var base = location.pathname.split("/")[1] === "loboburguer" ? "/loboburguer/" : "/";
+  document.write('<base href="' + base + '">');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap">

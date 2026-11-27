@@ -93,6 +93,47 @@ h1, h2, p { margin: 0; }
 
 .top__link:hover { border-color: var(--ink); }
 
+.top__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* cambio de carta: mesas / noche */
+
+.switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.switch__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 15px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  transition: background .18s ease, color .18s ease;
+}
+
+.switch__item:hover { color: var(--ink); }
+
+.switch__item.is-on {
+  background: var(--wine);
+  color: #fbf3e7;
+}
+
 .wrap {
   max-width: 940px;
   margin: 0 auto;
@@ -813,6 +854,9 @@ body.is-locked { overflow: hidden; }
   .top__brand { flex: 1 1 100%; }
   .top__brand img { width: 32px; height: 32px; }
   .top__name { font-size: 17px; }
+  .top__nav { flex: 1 1 100%; gap: 8px; }
+  .switch { flex: 1 1 100%; }
+  .switch__item { flex: 1; height: 38px; font-size: 9.5px; }
   .top__link { flex: 1 1 auto; justify-content: center; height: 40px; padding: 0 14px; font-size: 9.5px; }
   .wrap { padding: 16px 14px 120px; }
   .intro h1 { font-size: 28px; }

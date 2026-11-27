@@ -1,7 +1,8 @@
 /* Loboburguer Restaurant — carta de noche.
    Precios tomados de la carta impresa de la noche (en dólares).
-   Tiene su propio panel (admin-noche.html) y guarda sus cambios en
-   menu_state como la clave __noche__ de la misma fila del menú. */
+   Se administra desde el panel de siempre (admin.html?carta=noche) y
+   guarda sus cambios en menu_state como la clave __noche__ de la misma
+   fila del menú. */
 window.LOBO_MENU_NOCHE = {
   currency: "$",
   restaurant: "Loboburguer Restaurant",

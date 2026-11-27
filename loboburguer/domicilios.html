@@ -6,7 +6,13 @@
 <title>Loboburguer Domicilios — Carta y pedidos por WhatsApp</title>
 <meta name="description" content="Carta de Loboburguer Restaurant para pedir a domicilio: elige tus platos, quita los ingredientes que no quieras, comparte tu ubicación y cierra el pedido por WhatsApp.">
 <meta name="theme-color" content="#faf6f0">
-<base href="/loboburguer/domicilios/">
+<script>
+/* Igual en traccionweb.com/loboburguer que en la raíz de loboburger.site. */
+(function () {
+  var pre = location.pathname.split("/")[1] === "loboburguer" ? "/loboburguer/" : "/";
+  document.write('<base href="' + pre + 'domicilios/">');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://dlznvpmxolahwcvqsmli.supabase.co" crossorigin>

@@ -6,11 +6,17 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="theme-color" content="#faf6f0">
 <title>Panel de la carta · Loboburguer</title>
-<base href="/loboburguer/">
+<script>
+/* Igual en traccionweb.com/loboburguer que en la raíz de loboburger.site. */
+(function () {
+  var base = location.pathname.split("/")[1] === "loboburguer" ? "/loboburguer/" : "/";
+  document.write('<base href="' + base + '">');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/admin.css?v=10">
+<link rel="stylesheet" href="assets/admin.css?v=11">
 <link rel="icon" href="assets/img/logo.svg">
 </head>
 <body>
@@ -20,9 +26,15 @@
     <img src="assets/img/logo.svg" alt="" aria-hidden="true">
     <p class="top__name">Loboburguer<span>Panel de la carta</span></p>
   </div>
-  <a class="top__link" href="index.html" target="_blank" rel="noopener">Ver carta</a>
-  <a class="top__link" href="domicilios.html" target="_blank" rel="noopener">Ver domicilios</a>
-  <a class="top__link" href="admin-noche.html">Panel de noche</a>
+
+  <div class="top__nav">
+    <nav class="switch" aria-label="Carta que administras">
+      <a class="switch__item is-on" data-carta="dia" href="admin.html" aria-current="page">Mesas</a>
+      <a class="switch__item" data-carta="noche" href="admin.html?carta=noche">Noche</a>
+    </nav>
+    <a class="top__link" href="index.html" target="_blank" rel="noopener">Ver carta</a>
+    <a class="top__link" href="domicilios.html" target="_blank" rel="noopener">Ver domicilios</a>
+  </div>
 </header>
 
 <main class="wrap" id="app"></main>
@@ -36,6 +48,30 @@
 
 <script src="assets/config.js?v=3"></script>
 <script src="assets/data.js?v=5"></script>
+<script src="assets/data-noche.js?v=2"></script>
+<script>
+  /* La carta de noche se administra en esta misma página (?carta=noche):
+     al cambiar de carta no se vuelve a pedir el PIN porque es la misma
+     pestaña y la sesión del panel sigue abierta. */
+  (function () {
+    var noche = /(^|[?&])carta=noche(&|=|$)/.test(location.search);
+    if (!noche) return;
+
+    window.LOBO_MENU = window.LOBO_MENU_NOCHE;
+    window.LOBO_CONFIG.stateKey = "__noche__";
+
+    document.title = "Panel de la carta de noche · Loboburguer";
+    var subtitle = document.querySelector(".top__name span");
+    if (subtitle) subtitle.textContent = "Panel de la carta de noche";
+
+    Array.prototype.forEach.call(document.querySelectorAll(".switch__item"), function (item) {
+      var on = item.getAttribute("data-carta") === "noche";
+      item.classList.toggle("is-on", on);
+      if (on) item.setAttribute("aria-current", "page");
+      else item.removeAttribute("aria-current");
+    });
+  })();
+</script>
 <script src="assets/admin.js?v=15"></script>
 </body>
 </html>
