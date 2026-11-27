@@ -517,6 +517,20 @@ ul { padding: 0; list-style: none; }
   color: var(--gold);
 }
 
+.dish__flag {
+  justify-self: start;
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #a8423c;
+}
+
+.dish.is-blocked .dish__ph img { filter: grayscale(.55); }
+.dish.is-blocked .dish__price { color: var(--muted); }
+.dish.is-blocked .dish__desc { opacity: .7; }
+
 .dish__desc {
   margin-top: 3px;
   font-size: 12px;

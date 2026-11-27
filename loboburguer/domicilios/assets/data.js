@@ -7,7 +7,9 @@
    Horarios: `from: "late"` esconde el plato o la sección hasta la hora en
    que abre la carta de la noche y `until: "late"` lo apaga a partir de esa
    hora. "late" toma la hora editada en el panel (hoy 5:00 p. m.), así que un
-   cambio allí mueve todo el horario. Sin marca, el plato se vende todo el día. */
+   cambio allí mueve todo el horario. `from: "open"` esconde el plato o la
+   sección hasta la hora de apertura del negocio (hoy 6:30 a. m.). Sin marca,
+   el plato se vende todo el día. */
 window.LOBO_MENU = {
   currency: "$",
   restaurant: "Loboburguer Restaurant",
@@ -17,6 +19,7 @@ window.LOBO_MENU = {
     {
       id: "almuerzos",
       title: "Almuerzos",
+      from: "open",
       until: "late",
       quitar: ["Ensalada", "Tajadas", "Arroz o pasta"],
       blurb: "Con arroz o pasta, ensalada y tajadas. Servido hasta la tarde.",
@@ -41,6 +44,7 @@ window.LOBO_MENU = {
     {
       id: "sopas",
       title: "Sopas",
+      from: "open",
       until: "late",
       quitar: ["Cilantro", "Verduras"],
       blurb: "Caldo de la casa, servido hasta la tarde.",

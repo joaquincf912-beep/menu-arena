@@ -313,7 +313,7 @@
       '<div class="gps">' +
         '<button type="button" class="gps__btn" data-gps>' + pinIcon + (state.gps ? "Ubicación lista" : "Compartir mi ubicación exacta") + "</button>" +
         (state.gps
-          ? '<p class="gps__note">Ubicación tomada (' + state.gps.lat.toFixed(5) + ", " + state.gps.lng.toFixed(5) + '). <a href="' + esc(mapsUrl()) + '" target="_blank" rel="noopener">Ver en el mapa</a> · <button type="button" class="gps__clear" data-gps-clear>Quitar</button></p>'
+          ? '<p class="gps__note">Ubicación tomada' + (state.gps.acc ? " (±" + state.gps.acc + " m)" : "") + " (" + state.gps.lat.toFixed(5) + ", " + state.gps.lng.toFixed(5) + '). <a href="' + esc(mapsUrl()) + '" target="_blank" rel="noopener">Ver en el mapa</a> · <button type="button" class="gps__clear" data-gps-clear>Quitar</button></p>'
           : '<p class="gps__note">Solo se envía con el pedido. Si no la compartes, escribe una referencia clara.</p>') +
       "</div>" +
       field("f-ref", "Punto de referencia", state.customer.ref, { placeholder: "Frente a la panadería, portón negro…" }) +
@@ -391,27 +391,57 @@
   var locate = function () {
     var btn = pedBody.querySelector("[data-gps]");
     if (!("geolocation" in navigator)) {
-      tell("Tu teléfono no permite compartir la ubicación. Escribe la dirección y una referencia.");
+      tell("Este dispositivo no permite compartir la ubicación. Escribe la dirección y una referencia.");
       return;
     }
-    if (btn) {
-      btn.classList.add("is-busy");
-      btn.textContent = "Buscando tu ubicación…";
+    if (window.isSecureContext === false) {
+      tell("La ubicación solo funciona con conexión segura (https). Escribe la dirección y una referencia.");
+      return;
     }
-    navigator.geolocation.getCurrentPosition(function (pos) {
+
+    var setBusy = function (text) {
+      if (btn) {
+        btn.classList.add("is-busy");
+        btn.textContent = text;
+      }
+    };
+
+    var onOk = function (pos) {
       state.gps = {
         lat: Number(pos.coords.latitude.toFixed(6)),
-        lng: Number(pos.coords.longitude.toFixed(6))
+        lng: Number(pos.coords.longitude.toFixed(6)),
+        acc: pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null
       };
       save();
       render();
-      tell("Ubicación guardada. Se envía con tu pedido.");
-    }, function (err) {
-      render();
-      tell(err && err.code === 1
-        ? "No diste permiso de ubicación. Puedes escribir la dirección y un punto de referencia."
-        : "No pudimos tomar tu ubicación ahora. Escribe la dirección y un punto de referencia.");
-    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+      tell(state.gps.acc
+        ? "Ubicación guardada (±" + state.gps.acc + " m). Se envía con tu pedido."
+        : "Ubicación guardada. Se envía con tu pedido.");
+    };
+
+    var onFail = function (err) {
+      if (err && err.code === 1) {
+        render();
+        tell("No diste permiso de ubicación. Puedes escribir la dirección y un punto de referencia.");
+        return;
+      }
+      /* Segundo intento con menos precisión: funciona mejor en interiores,
+         equipos con GPS lento o navegadores que no aceptan alta precisión. */
+      setBusy("Ajustando la ubicación…");
+      navigator.geolocation.getCurrentPosition(onOk, function (err2) {
+        render();
+        tell(err2 && err2.code === 1
+          ? "No diste permiso de ubicación. Escribe la dirección y un punto de referencia."
+          : "No pudimos tomar tu ubicación. Revisa que el GPS esté activo o escribe la dirección y una referencia.");
+      }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+    };
+
+    setBusy("Buscando tu ubicación…");
+    navigator.geolocation.getCurrentPosition(onOk, onFail, {
+      enableHighAccuracy: true,
+      timeout: 18000,
+      maximumAge: 0
+    });
   };
 
   /* ---------- pintar ---------- */
@@ -547,6 +577,7 @@
   var addFromCard = function (key, opt) {
     var item = find(key);
     if (!item) return;
+    if (item.blocked) { tell("Este plato está agotado por ahora. Elige otro de la carta."); return; }
 
     if (opt) {
       var price = optPrice(item, opt);

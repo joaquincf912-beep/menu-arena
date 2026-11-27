@@ -51,11 +51,13 @@
     return reached(SCHED.lateFrom);
   };
 
-  /* La carta marca sus horarios con "late": así siguen la misma hora que se
-     edita en el panel (hamburguesas y especiales de noche, y el corte de
-     almuerzos y sopas). */
+  /* La carta marca sus horarios con tokens que siguen la hora editada en el
+     panel: "late" = carta de la noche (hoy 5:00 p. m.) y "open" = apertura
+     del negocio (hoy 6:30 a. m.). */
   var hourOf = function (value) {
-    return value === "late" ? SCHED.lateFrom : value;
+    if (value === "late") return SCHED.lateFrom;
+    if (value === "open") return SCHED.open;
+    return value;
   };
 
   /* Devuelve el aviso que explica por qué un plato está apagado, o "" si se
@@ -154,7 +156,8 @@
     }).join("|");
   };
 
-  var itemMarkup = function (section, item, lock) {
+  var itemMarkup = function (section, item, lock, blocked) {
+    blocked = !!blocked;
     var key = section.id + ":" + item.id;
     defaults[key] = {
       name: item.name,
@@ -180,7 +183,7 @@
       }).join("") + "</ul>";
     }
 
-    return '<article class="dish' + (lock ? " is-later" : "") + '" data-key="' + esc(key) + '" data-search="' + esc(search) + '">' +
+    return '<article class="dish' + (lock ? " is-later" : "") + (blocked ? " is-blocked" : "") + '" data-key="' + esc(key) + '" data-search="' + esc(search) + '">' +
       '<figure class="dish__ph">' + (img ? '<img src="' + esc(img) + '" alt="' + esc(item.name) + '" loading="lazy" decoding="async" width="120" height="120">' : "") + "</figure>" +
       '<div class="dish__text">' +
         '<div class="dish__row">' +
@@ -194,11 +197,13 @@
         (item.desc ? '<p class="dish__desc">' + esc(item.desc) + "</p>" : "") +
         options +
         '<div class="dish__act">' +
-          (lock
-            ? '<span class="dish__hint">' + esc(lock) + "</span>"
-            : item.options
-              ? '<span class="dish__hint">Toca + para elegir el tamaño</span>'
-              : '<button class="dish__add" type="button" data-add="' + esc(key) + '"><span aria-hidden="true">+</span> Agregar</button>') +
+          (blocked
+            ? '<span class="dish__hint dish__hint--blocked">Agotado por ahora</span>'
+            : lock
+              ? '<span class="dish__hint">' + esc(lock) + "</span>"
+              : item.options
+                ? '<span class="dish__hint">Toca + para elegir el tamaño</span>'
+                : '<button class="dish__add" type="button" data-add="' + esc(key) + '"><span aria-hidden="true">+</span> Agregar</button>') +
         "</div>" +
       "</div>" +
     "</article>";
@@ -245,7 +250,9 @@
             '<div class="cat__rule" aria-hidden="true"><i></i></div>' +
           "</header>" +
           '<div class="grid">' + section.items.map(function (item) {
-            return itemMarkup(section, item, secLock || lockText(item.from, item.until));
+            var key = section.id + ":" + item.id;
+            var blocked = !!(stateCache[key] && stateCache[key].blocked);
+            return itemMarkup(section, item, secLock || lockText(item.from, item.until), blocked);
           }).join("") + "</div>" +
         "</section>"
       );
@@ -303,11 +310,18 @@
 
   draw();
 
-  var lastLate = lateOpen();
+  var lockSignature = function () {
+    var list = buildSections();
+    return list.map(function (section) {
+      return section.id + ":" + (lockText(section.from, section.until) || "") + "|" +
+        section.items.map(function (item) { return item.id + "=" + (lockText(item.from, item.until) || ""); }).join(",");
+    }).join(";");
+  };
+  var lastLockSig = lockSignature();
   setInterval(function () {
-    var late = lateOpen();
-    if (late === lastLate) return;
-    lastLate = late;
+    var next = lockSignature();
+    if (next === lastLockSig) return;
+    lastLockSig = next;
     draw();
   }, 30000);
 
@@ -386,17 +400,21 @@
       });
     }
 
+    var blocked = !!(entry && entry.blocked);
     catalog[key] = {
       key: key,
       name: fallback.name || "",
       section: fallback.section || "",
       price: price === null || price === undefined ? null : Number(price),
       sin: fallback.sin || [],
+      blocked: blocked,
       options: (options || []).map(function (option) {
         var p = option && option.price;
         return { label: option && option.label, price: p === null || p === undefined ? null : Number(p) };
       })
     };
+
+    if (target.node) target.node.classList.toggle("is-blocked", blocked);
 
     setPhoto(target, target.node.querySelector(".dish__name").textContent.trim(), entry && entry.img ? entry.img : fallback.img);
   };
@@ -428,7 +446,7 @@
           }
           if (domi.lateFrom) SCHED.lateFrom = String(domi.lateFrom);
           if (JSON.stringify(SCHED) !== schedBefore) {
-            lastLate = lateOpen();
+            lastLockSig = lockSignature();
             draw();
           }
 
@@ -437,7 +455,11 @@
       }
 
       var nextMeta = stateCache.__loboburguer__ || { removed: [], added: [] };
-      if (signature(nextMeta) !== renderedSig) {
+      var blockedSig = Object.keys(stateCache).filter(function (k) {
+        return stateCache[k] && stateCache[k].blocked;
+      }).sort().join(",");
+      if (signature(nextMeta) !== renderedSig || blockedSig !== (window.__lobo_blocked_sig__ || "")) {
+        window.__lobo_blocked_sig__ = blockedSig;
         meta = nextMeta;
         draw();
         return;

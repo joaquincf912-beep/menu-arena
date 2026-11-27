@@ -459,6 +459,18 @@
     return entry && entry.img ? entry.img : fallback.img;
   }
 
+  function syncFlag(btn, blocked, label) {
+    if (!btn) return;
+    blocked = !!blocked;
+    btn.classList.toggle("is-on", blocked);
+    btn.textContent = blocked ? "Agotado" : "Disponible";
+    btn.title = blocked ? "Toca para volver a habilitarlo en la carta" : "Toca para marcarlo como agotado";
+    btn.setAttribute("aria-pressed", blocked ? "true" : "false");
+    if (label) {
+      btn.setAttribute("aria-label", (blocked ? "Volver a habilitar " : "Marcar como agotado ") + label);
+    }
+  }
+
   function syncChangeMark(key) {
     var row = app.querySelector('[data-key="' + key + '"]');
     if (!row) return;
@@ -468,6 +480,7 @@
     if (entry.price !== undefined && entry.price !== fallback.price) changed = true;
     if (entry.img && entry.img !== fallback.img) changed = true;
     if (entry.options && JSON.stringify(entry.options) !== JSON.stringify(fallback.options)) changed = true;
+    if (entry.blocked === true && fallback.blocked !== true) changed = true;
     row.classList.toggle("is-changed", changed);
   }
 
@@ -476,6 +489,9 @@
     if (!row) return;
     var priceInput = row.querySelector("[data-price]");
     if (priceInput) priceInput.value = priceText(priceOf(key));
+
+    var flag = row.querySelector("[data-block]");
+    syncFlag(flag, !!(current[key] && current[key].blocked), row.getAttribute("data-name") || "");
 
     var img = row.querySelector(".row__thumb img");
     var src = photoSrc(imgOf(key));
@@ -508,13 +524,15 @@
         options: item.options ? item.options.map(function (option) {
           return { label: option.label, price: option.price };
         }) : null,
-        img: item.img || null
+        img: item.img || null,
+        blocked: !!item.blocked
       };
     }
 
     var row = document.createElement("div");
     row.className = "row";
     row.setAttribute("data-key", key);
+    row.setAttribute("data-name", item.name);
 
     /* foto */
     var thumb = document.createElement("label");
@@ -569,6 +587,20 @@
       hint.textContent = item.desc;
       name.appendChild(hint);
     }
+
+    var flag = document.createElement("button");
+    flag.type = "button";
+    flag.className = "row__flag";
+    flag.setAttribute("data-block", "1");
+    syncFlag(flag, !!(current[key] && current[key].blocked), item.name);
+    flag.addEventListener("click", function () {
+      var entry = entryOf(key);
+      if (entry.blocked) delete entry.blocked;
+      else entry.blocked = true;
+      syncFlag(flag, !!entry.blocked, item.name);
+      onEdit(key);
+    });
+    name.appendChild(flag);
     row.appendChild(name);
 
     /* precio */
@@ -788,6 +820,7 @@
     intro.innerHTML =
       "<h1>Precios, fotos y platos de la carta</h1>" +
       "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Con el botón <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas de la carta. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>" +
+      "<p>Si un plato se agota, toca su etiqueta <strong>Disponible</strong> para ponerlo en <strong>Agotado</strong>: deja de poder pedirse en domicilios y se muestra agotado en la carta. Tócala otra vez para volver a habilitarlo.</p>" +
       "<p>En <strong>Carta de domicilios</strong> ajustas el WhatsApp, el horario del negocio, la hora en que se habilita la carta de la noche, el mínimo, el envío (que se confirma por WhatsApp según la distancia y la hora) y los textos de pago. Los platos y los precios son los mismos para las dos cartas.</p>";
     app.appendChild(intro);
 
@@ -865,11 +898,14 @@
 
       var priceChanged = price !== fallback.price;
       var optionsChanged = options && JSON.stringify(options) !== JSON.stringify(fallback.options);
+      var blocked = entry.blocked === true;
+      var blockedChanged = blocked !== !!fallback.blocked;
 
-      if (priceChanged || optionsChanged || img) {
+      if (priceChanged || optionsChanged || img || blockedChanged) {
         var item = { price: price };
         if (img) item.img = img;
         if (optionsChanged) item.options = options;
+        if (blocked) item.blocked = true;
         out[key] = item;
       }
     });

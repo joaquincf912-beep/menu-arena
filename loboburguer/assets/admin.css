@@ -359,6 +359,46 @@ h1, h2, p { margin: 0; }
 .row__del:hover { background: #f8e6e2; color: #8d2b2b; }
 .row__del svg { width: 15px; height: 15px; }
 
+/* agotado / disponible */
+
+.row__flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.row__flag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #cbbfae;
+  transition: background .18s ease;
+}
+
+.row__flag:hover { border-color: #d8cbb8; color: var(--ink-2); }
+
+.row__flag.is-on {
+  background: #f8e6e2;
+  border-color: #e0b3a9;
+  color: #8d2b2b;
+}
+
+.row__flag.is-on::before { background: #c0524b; }
+
 /* ---------- agregar plato ---------- */
 
 .panel__foot {
@@ -749,15 +789,68 @@ body.is-locked { overflow: hidden; }
 
 .bar__retry:hover { background: rgba(255, 255, 255, .26); }
 
-@media (max-width: 560px) {
-  .top { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+@media (max-width: 640px) {
+  .top {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-bottom: 10px;
+  }
+  .top__brand { flex: 1 1 100%; }
+  .top__brand img { width: 32px; height: 32px; }
+  .top__name { font-size: 17px; }
+  .top__link { flex: 1 1 auto; justify-content: center; height: 40px; padding: 0 14px; font-size: 9.5px; }
+  .wrap { padding: 16px 14px 120px; }
+  .intro h1 { font-size: 28px; }
+  .intro p { font-size: 13px; }
+  .panel__head { gap: 10px; padding: 13px 14px; }
+  .panel__title { font-size: 19px; }
+  .panel__count { font-size: 10.5px; }
+
+  .row {
+    grid-template-columns: 46px minmax(0, 1fr) 82px;
+    grid-template-areas: "thumb name name" "thumb price actions";
+    align-items: center;
+    padding: 12px 14px;
+    gap: 8px 10px;
+  }
+  .row__thumb { width: 46px; height: 46px; grid-area: thumb; }
+  .row__name { grid-area: name; }
+  .row__price { grid-area: price; height: 38px; padding-right: 12px; }
+  .row__opts { grid-column: 1 / -1; padding-top: 4px; }
+  .row__actions { grid-area: actions; justify-content: flex-end; gap: 6px; }
+  .row__reset,
+  .row__del { opacity: 1; width: 34px; height: 34px; }
+  .row__flag { font-size: 10px; padding: 4px 10px; }
+  .row__price input,
+  .row__opt input { font-size: 16px; }
+
+  .domi { padding: 14px; }
+  .domi__grid,
+  .domi__grid--pay { grid-template-columns: 1fr; }
+
+  .add { padding: 4px 14px 18px; }
+  .add__grid { grid-template-columns: 1fr; }
+  .add__grid .add__wide { grid-column: auto; }
+  .add__actions { flex-direction: column-reverse; }
+  .add__cancel,
+  .add__save { width: 100%; height: 46px; }
+  .panel__foot { padding: 12px 14px; }
+  .add-btn { width: 100%; justify-content: center; padding: 11px 15px; }
+
   .bar {
-    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-    max-width: calc(100vw - 24px);
-    padding: 9px 14px;
+    left: 12px;
+    right: 12px;
+    transform: none;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    max-width: none;
+    padding: 10px 14px;
+    border-radius: 14px;
     font-size: 12.5px;
   }
   .bar__text { line-height: 1.35; }
+  .bar__retry { min-height: 34px; padding: 6px 12px; }
+
   .confirm { place-items: end center; padding: 12px; }
   .confirm__box {
     max-width: none;
@@ -769,31 +862,19 @@ body.is-locked { overflow: hidden; }
   }
   .confirm__title { font-size: 21px; }
   .confirm__cancel,
-  .confirm__ok { height: 46px; }
-  .row__price input,
-  .row__opt input { font-size: 16px; }
-  .row__price { padding-right: 12px; }
+  .confirm__ok { height: 48px; }
+
   .lock { margin-top: 5vh; padding: 26px 22px; }
   .lock input { font-size: 20px; }
-  .wrap { padding-bottom: 110px; }
+  .lock button { height: 52px; }
+}
+
+@media (max-width: 380px) {
   .row {
-    grid-template-columns: 46px minmax(0, 1fr) 74px 58px;
-    grid-template-areas: "thumb name price actions" "thumb opts opts opts";
-    align-items: start;
-    padding: 12px 14px;
-    gap: 8px 10px;
+    grid-template-columns: 42px minmax(0, 1fr);
+    grid-template-areas: "thumb name" "price price" "actions actions";
   }
-  .row__thumb { width: 46px; height: 46px; grid-area: thumb; }
-  .row__name { grid-area: name; }
-  .row__price { grid-area: price; height: 34px; }
-  .row__opts { grid-area: opts; padding-top: 4px; }
-  .row__actions { grid-area: actions; justify-content: flex-end; align-self: start; }
-  .row__reset,
-  .row__del { opacity: 1; width: 27px; height: 27px; }
-  .domi { padding: 14px; }
-  .domi__grid--pay { grid-template-columns: 1fr; }
-  .add__grid { grid-template-columns: 1fr 1fr; }
-  .add__grid .add__wide { grid-column: 1 / -1; }
-  .add { padding: 4px 14px 18px; }
-  .panel__foot { padding: 12px 14px; }
+  .row__thumb { width: 42px; height: 42px; }
+  .row__price { justify-self: stretch; }
+  .row__actions { justify-content: flex-start; }
 }

@@ -101,6 +101,7 @@
           '<p class="dish__price" data-role="price"></p>' +
         "</div>" +
         (item.tag ? '<span class="dish__tag">' + esc(item.tag) + "</span>" : "") +
+        '<span class="dish__flag" data-role="flag" hidden>Agotado</span>' +
         (item.desc ? '<p class="dish__desc">' + esc(item.desc) + "</p>" : "") +
         options +
       "</div>" +
@@ -238,6 +239,7 @@
 
     if (typeof entry === "number") entry = { price: entry };
 
+    var blocked = !!(entry && entry.blocked);
     var price = entry && Object.prototype.hasOwnProperty.call(entry, "price") ? entry.price : fallback.price;
     var options = entry && Array.isArray(entry.options) && entry.options.length ? entry.options : fallback.options;
     if (price !== null && price !== undefined) price = Number(price);
@@ -268,6 +270,10 @@
     }
 
     setPhoto(target, target.node.querySelector(".dish__name").textContent.trim(), entry && entry.img ? entry.img : fallback.img);
+
+    target.node.classList.toggle("is-blocked", blocked);
+    var flag = target.node.querySelector('[data-role="flag"]');
+    if (flag) flag.hidden = !blocked;
   };
 
   Object.keys(registry).forEach(function (key) { paint(key, null, false); });
