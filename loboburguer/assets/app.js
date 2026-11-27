@@ -319,7 +319,9 @@
         })
         .then(function (rows) {
           var row = rows && rows[0];
-          applyState((row && row.state) || {});
+          var state = (row && row.state) || {};
+          if (config.stateKey) state = state[config.stateKey] || {};
+          applyState(state);
         })
         .catch(function () {})
         .then(function () {

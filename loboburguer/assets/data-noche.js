@@ -1,8 +1,8 @@
 /* Loboburguer Restaurant — carta de noche.
    Precios tomados de la carta impresa de la noche (en dólares).
-   Esta carta es independiente de la del día: no se conecta al panel,
-   así que sus precios son siempre los de la carta impresa. */
-window.LOBO_MENU = {
+   Tiene su propio panel (admin-noche.html) y guarda sus cambios en
+   menu_state como la clave __noche__ de la misma fila del menú. */
+window.LOBO_MENU_NOCHE = {
   currency: "$",
   restaurant: "Loboburguer Restaurant",
   phone: "0414-9552961",

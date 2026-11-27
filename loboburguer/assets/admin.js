@@ -11,12 +11,16 @@
   var base = String(config.supabaseUrl || "").replace(/\/$/, "");
   var apiKey = config.supabaseKey || "";
   var stateId = config.stateId || "__lobo_menu__";
+  /* Con stateKey el panel administra una carta extra guardada dentro de la
+     misma fila, por ejemplo la carta de noche en __noche__. */
+  var stateKey = String(config.stateKey || "");
   var bucket = config.bucket || "menu";
   var PIN = String(config.pin || "1987");
   var UNLOCKED = "lobo_admin_unlocked";
 
   var defaults = {};
   var current = {};
+  var root = {};
   var saved = {};
   var meta = { removed: [], added: [] };
   var dirty = false;
@@ -268,7 +272,7 @@
         '<div class="confirm__box" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">' +
           '<p class="confirm__tag">Quitar de la carta</p>' +
           '<h2 class="confirm__title" id="confirmTitle"></h2>' +
-          '<p class="confirm__text" id="confirmText">Dejará de aparecer en la carta de las mesas. Puedes deshacerlo justo después.</p>' +
+          '<p class="confirm__text" id="confirmText">Dejará de aparecer en la ' + (stateKey ? "carta de noche" : "carta de las mesas") + '. Puedes deshacerlo justo después.</p>' +
           '<div class="confirm__actions">' +
             '<button type="button" class="confirm__cancel">Cancelar</button>' +
             '<button type="button" class="confirm__ok">Eliminar</button>' +
@@ -601,6 +605,14 @@
       onEdit(key);
     });
     name.appendChild(flag);
+
+    if (stateKey) {
+      var night = document.createElement("span");
+      night.className = "row__night";
+      night.textContent = "Plato nocturno";
+      name.appendChild(night);
+    }
+
     row.appendChild(name);
 
     /* precio */
@@ -817,14 +829,17 @@
 
     var intro = document.createElement("div");
     intro.className = "intro";
-    intro.innerHTML =
-      "<h1>Precios, fotos y platos de la carta</h1>" +
-      "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Con el botón <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas de la carta. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>" +
-      "<p>Si un plato se agota, toca su etiqueta <strong>Disponible</strong> para ponerlo en <strong>Agotado</strong>: deja de poder pedirse en domicilios y se muestra agotado en la carta. Tócala otra vez para volver a habilitarlo.</p>" +
-      "<p>En <strong>Carta de domicilios</strong> ajustas el WhatsApp, el horario del negocio, la hora en que se habilita la carta de la noche, el mínimo, el envío (que se confirma por WhatsApp según la distancia y la hora) y los textos de pago. Los platos y los precios son los mismos para las dos cartas.</p>";
+    intro.innerHTML = stateKey
+      ? "<h1>Precios, fotos y platos de la carta de noche</h1>" +
+        "<p>Estos platos aparecen solo en la <strong>carta de noche</strong>, cada uno con su precio de la noche. Escribe el precio en dólares y toca la foto para cambiarla; con <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas. Se guarda solo y la carta de noche se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>" +
+        "<p>Si un plato se agota, toca su etiqueta <strong>Disponible</strong> para ponerlo en <strong>Agotado</strong>: la carta de noche lo muestra agotado. Tócala otra vez para volver a habilitarlo.</p>"
+      : "<h1>Precios, fotos y platos de la carta</h1>" +
+        "<p>Escribe el precio en dólares y toca la foto de un plato para cambiarla. Con el botón <strong>Agregar plato</strong> sumas uno nuevo al final de su sección y con el basurero lo quitas de la carta. Se guarda solo y la carta de las mesas se actualiza en segundos. Deja el precio vacío para mostrar <code>Consultar</code>.</p>" +
+        "<p>Si un plato se agota, toca su etiqueta <strong>Disponible</strong> para ponerlo en <strong>Agotado</strong>: deja de poder pedirse en domicilios y se muestra agotado en la carta. Tócala otra vez para volver a habilitarlo.</p>" +
+        "<p>En <strong>Carta de domicilios</strong> ajustas el WhatsApp, el horario del negocio, la hora en que se habilita la carta de la noche, el mínimo, el envío (que se confirma por WhatsApp según la distancia y la hora) y los textos de pago. Los platos y los precios son los mismos para la carta de mesas y la de domicilios.</p>";
     app.appendChild(intro);
 
-    if (domi) app.appendChild(buildDomiPanel(openPanels.domicilios));
+    if (domi && !stateKey) app.appendChild(buildDomiPanel(openPanels.domicilios));
 
     viewSections().forEach(function (section, index) {
       var panel = document.createElement("details");
@@ -875,7 +890,7 @@
   function payload() {
     var out = {};
 
-    if (domi) out.__domicilios__ = JSON.parse(JSON.stringify(domi));
+    if (domi && !stateKey) out.__domicilios__ = JSON.parse(JSON.stringify(domi));
 
     if (meta.removed.length || meta.added.length) {
       out.__loboburguer__ = {
@@ -910,6 +925,12 @@
       }
     });
 
+    /* La carta de noche vive en la misma fila: al guardar la de día hay que
+       devolverla tal cual para no borrarla. */
+    if (!stateKey && current.__noche__ && typeof current.__noche__ === "object") {
+      out.__noche__ = JSON.parse(JSON.stringify(current.__noche__));
+    }
+
     return out;
   }
 
@@ -939,7 +960,12 @@
     }
 
     saving = true;
-    var body = payload();
+    var sent = payload();
+    var body = sent;
+    if (stateKey) {
+      body = JSON.parse(JSON.stringify(root || {}));
+      body[stateKey] = sent;
+    }
 
     return fetch(base + "/rest/v1/menu_state?on_conflict=id", {
       method: "POST",
@@ -958,7 +984,8 @@
           });
         }
         dirty = false;
-        saved = JSON.parse(JSON.stringify(body));
+        saved = JSON.parse(JSON.stringify(sent));
+        if (stateKey) root = JSON.parse(JSON.stringify(body));
         clearTimeout(retryTimer);
         showBar("Guardado. La carta ya muestra los cambios.", "ok", undoState ? 6000 : 2600);
       })
@@ -1037,9 +1064,16 @@
     load
       .catch(function () { return null; })
       .then(function (state) {
-        current = state || {};
-        domi = normalizeDomi(current.__domicilios__);
-        current.__domicilios__ = domi;
+        root = state && typeof state === "object" ? state : {};
+        if (stateKey) {
+          var nested = root[stateKey];
+          current = nested && typeof nested === "object" ? JSON.parse(JSON.stringify(nested)) : {};
+          domi = null;
+        } else {
+          current = root;
+          domi = normalizeDomi(current.__domicilios__);
+          current.__domicilios__ = domi;
+        }
         meta = normalizeMeta(current.__loboburguer__);
         saved = JSON.parse(JSON.stringify(current));
         render();

@@ -248,6 +248,20 @@ h1, h2, p { margin: 0; }
   margin-top: 2px;
 }
 
+.row__name .row__night {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: 1px solid rgba(176, 138, 79, .45);
+  border-radius: 999px;
+  background: rgba(176, 138, 79, .1);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: #8a6a36;
+}
+
 .row__price {
   display: flex;
   align-items: center;
